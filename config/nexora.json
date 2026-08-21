@@ -1,0 +1,17 @@
+{
+  "name": "NEXORA",
+  "mode": "infrastructure",
+  "api": {
+    "host": "127.0.0.1",
+    "port": 8082
+  },
+  "features": {
+    "agents": true,
+    "plugins": true,
+    "memory": true,
+    "security_audit": true,
+    "observability": true,
+    "recovery": true,
+    "governance": true
+  }
+}
