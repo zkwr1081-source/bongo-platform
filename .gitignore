@@ -8,3 +8,26 @@ __pycache__/
 .env
 .venv/
 node_modules/
+
+# Build / cache
+build/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Runtime
+*.pid
+*.log
+*.db
+*.db-journal
+
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# Local backups
+backups/
+
+# Embedded repositories
+ml/backend/ggml/ggml/
