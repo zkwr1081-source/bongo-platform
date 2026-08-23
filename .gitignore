@@ -31,3 +31,33 @@ backups/
 
 # Embedded repositories
 ml/backend/ggml/ggml/
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
+token.json
+
+# Python / build
+__pycache__/
+*.pyc
+.pytest_cache/
+build/
+
+# Runtime / local data
+*.log
+*.pid
+*.db
+*.db-journal
+
+# Local backups
+backups/
+
+# Embedded repositories
+ml/backend/ggml/ggml/
