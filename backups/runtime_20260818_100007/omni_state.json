@@ -1,0 +1,36 @@
+{
+  "system": "NEXORA",
+  "master": "OMNI",
+  "version": "2.0",
+  "status": "ONLINE",
+  "started_at": 1787036042.6616063,
+  "mode": "100K",
+  "services": {
+    "agent_api": {
+      "port": 8082,
+      "online": false
+    },
+    "dashboard": {
+      "port": 8091,
+      "online": false
+    }
+  },
+  "events": [
+    {
+      "time": 1787036042.662029,
+      "message": "NEXORA OMNI MASTER V2 STARTING"
+    },
+    {
+      "time": 1787036042.6624007,
+      "message": "agent_api: FILE NOT FOUND"
+    },
+    {
+      "time": 1787036042.6629488,
+      "message": "dashboard: FILE NOT FOUND"
+    },
+    {
+      "time": 1787036042.739341,
+      "message": "OMNI MASTER ONLINE: http://127.0.0.1:8080"
+    }
+  ]
+}

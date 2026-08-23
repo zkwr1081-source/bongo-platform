@@ -1,0 +1,36 @@
+{
+  "system": "NEXORA",
+  "master": "OMNI",
+  "version": "2.0",
+  "status": "ONLINE",
+  "started_at": 1787036408.3955772,
+  "mode": "100K",
+  "services": {
+    "agent_api": {
+      "port": 8082,
+      "online": true
+    },
+    "dashboard": {
+      "port": 8091,
+      "online": true
+    }
+  },
+  "events": [
+    {
+      "time": 1787036408.3958294,
+      "message": "NEXORA OMNI MASTER V2 STARTING"
+    },
+    {
+      "time": 1787036408.4311678,
+      "message": "agent_api: START REQUESTED"
+    },
+    {
+      "time": 1787036408.4785008,
+      "message": "dashboard: START REQUESTED"
+    },
+    {
+      "time": 1787036408.5728614,
+      "message": "OMNI MASTER ONLINE: http://127.0.0.1:8080"
+    }
+  ]
+}

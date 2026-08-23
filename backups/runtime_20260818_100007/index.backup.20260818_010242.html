@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07080b">
+<title>NEXORA — Client OS</title>
+<style>
+*{box-sizing:border-box}
+:root{
+--bg:#07080b;--panel:#0d1016;--panel2:#11151d;--line:#202632;
+--text:#f5f7fb;--muted:#87909f;--accent:#7c5cff;--cyan:#35d9ff;
+}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+body{overflow-x:hidden}
+body:before{
+content:"";position:fixed;inset:-35%;pointer-events:none;
+background:
+radial-gradient(circle at 78% 18%,rgba(124,92,255,.22),transparent 22%),
+radial-gradient(circle at 18% 72%,rgba(53,217,255,.13),transparent 24%),
+radial-gradient(circle at 55% 48%,rgba(255,70,190,.08),transparent 20%);
+filter:blur(55px);z-index:0;
+animation:aurora 14s ease-in-out infinite alternate
+}
+@keyframes aurora{
+0%{transform:translate(-4%,-3%) scale(1)}
+50%{transform:translate(5%,4%) scale(1.08)}
+100%{transform:translate(-2%,6%) scale(1.03)}
+}
+.app{position:relative;z-index:1;max-width:1180px;margin:auto;padding:18px 18px 100px}
+.top{
+height:64px;display:flex;align-items:center;justify-content:space-between;
+animation:fadeDown .7s ease both;
+border-bottom:1px solid var(--line);margin-bottom:30px
+}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{
+width:39px;height:39px;border-radius:13px;
+display:grid;place-items:center;font-weight:900;
+background:linear-gradient(135deg,#7c5cff,#35d9ff);
+box-shadow:0 0 30px rgba(124,92,255,.25)
+}
+.brand strong{font-size:18px;letter-spacing:1px}
+.status{font-size:11px;color:#7df2c0;display:flex;gap:6px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;background:#48e6a2;box-shadow:0 0 12px #48e6a2;animation:pulse 1.6s infinite}
+
+.hero{padding:28px 0 24px;animation:fadeUp .8s ease .1s both}
+.eyebrow{color:#9b8cff;font-size:12px;font-weight:700;letter-spacing:2px;margin-bottom:12px}
+h1{font-size:clamp(30px,7vw,62px);line-height:1.05;margin:0;letter-spacing:-2px;max-width:800px}
+.hero p{color:var(--muted);max-width:650px;line-height:1.8;margin:18px 0 0;font-size:15px}
+
+.ai{
+margin-top:28px;padding:18px;border:1px solid var(--line);
+background:linear-gradient(145deg,rgba(17,21,29,.95),rgba(10,12,17,.95));
+border-radius:24px;box-shadow:0 20px 60px rgba(0,0,0,.28)
+}
+.aihead{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.aiicon{
+width:35px;height:35px;border-radius:11px;background:#17132c;
+display:grid;place-items:center;color:#a894ff
+}
+.prompt{
+width:100%;min-height:54px;border:1px solid #292f3c;border-radius:16px;
+background:#080a0e;color:white;padding:15px;outline:none;font-size:14px
+}
+.prompt:focus{border-color:#6d57df;box-shadow:0 0 0 3px rgba(124,92,255,.1)}
+.send{
+margin-top:10px;width:100%;height:48px;border:0;border-radius:14px;
+background:linear-gradient(90deg,#7658ff,#35bfe4);color:white;font-weight:800;
+cursor:pointer
+}
+
+.section{margin-top:36px}
+.sectionhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.sectionhead h2{font-size:18px;margin:0}
+.sectionhead span{font-size:11px;color:var(--muted)}
+
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.card{
+position:relative;overflow:hidden;padding:20px;min-height:155px;
+animation:cardIn .65s ease both;
+border:1px solid var(--line);background:rgba(13,16,22,.9);
+border-radius:21px;cursor:pointer;transition:.28s
+}
+.card:hover{transform:translateY(-7px) scale(1.015);border-color:#5d6680;box-shadow:0 18px 45px rgba(0,0,0,.28)}
+.card:active{transform:scale(.97)}
+.card:after{
+content:"";position:absolute;width:90px;height:90px;left:-30px;bottom:-40px;
+background:var(--glow,#7c5cff);filter:blur(45px);opacity:.16
+}
+.icon{
+width:42px;height:42px;border-radius:13px;background:#171b24;
+display:grid;place-items:center;font-size:20px;margin-bottom:17px
+}
+.card h3{font-size:15px;margin:0 0 7px}
+.card p{font-size:12px;color:var(--muted);line-height:1.6;margin:0}
+.arrow{position:absolute;left:17px;bottom:18px;color:#657083}
+
+.project{
+padding:20px;border:1px solid var(--line);border-radius:22px;
+background:linear-gradient(120deg,#11151d,#0b0e13)
+}
+.projecttop{display:flex;justify-content:space-between;gap:15px}
+.projectname{font-weight:800}
+.tag{font-size:10px;color:#7df2c0;background:#10251d;padding:6px 9px;border-radius:20px}
+.progress{height:6px;background:#1d222c;border-radius:10px;margin-top:18px;overflow:hidden}
+.progress i{display:block;width:82%;height:100%;animation:progressGlow 2.5s ease-in-out infinite;background:linear-gradient(90deg,#7658ff,#35d9ff);border-radius:10px}
+.meta{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-top:9px}
+
+.activity{display:grid;gap:9px}
+.event{
+display:flex;align-items:center;gap:12px;padding:13px 14px;
+border:1px solid var(--line);background:#0c0f14;border-radius:15px
+}
+.eventicon{width:32px;height:32px;border-radius:10px;background:#171b23;display:grid;place-items:center}
+.event b{font-size:12px}.event small{display:block;color:var(--muted);margin-top:3px}
+
+.bottom{
+position:fixed;animation:navIn .8s ease .5s both;bottom:14px;left:50%;transform:translateX(-50%);
+width:min(92%,500px);height:62px;border:1px solid #292f3b;
+background:rgba(10,12,17,.88);backdrop-filter:blur(20px);
+border-radius:22px;display:flex;justify-content:space-around;align-items:center;
+z-index:10;box-shadow:0 15px 45px #0008
+}
+.nav{border:0;background:none;color:#737d8d;font-size:10px;cursor:pointer}
+.nav.active{color:white}.nav div{font-size:18px;margin-bottom:3px}
+
+.overlay{
+position:fixed;inset:0;background:#0009;backdrop-filter:blur(12px);
+display:none;align-items:flex-end;justify-content:center;z-index:30
+}
+.overlay.show{display:flex}
+.sheet{
+width:min(100%,720px);max-height:88vh;overflow:auto;
+background:#0d1016;border:1px solid #252b37;border-bottom:0;
+border-radius:28px 28px 0 0;padding:23px;animation:up .28s ease
+}
+@keyframes up{from{transform:translateY(100%);opacity:.5}to{transform:none;opacity:1}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+@keyframes fadeDown{from{opacity:0;transform:translateY(-15px)}to{opacity:1;transform:none}}
+@keyframes cardIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@keyframes navIn{from{opacity:0;transform:translate(-50%,30px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.6);opacity:1}}
+@keyframes progressGlow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.35)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+.close{float:left;border:0;background:#1a1f28;color:#aaa;width:34px;height:34px;border-radius:50%;cursor:pointer}
+.sheet h2{margin:5px 0 8px}.sheet p{color:var(--muted);line-height:1.7;font-size:13px}
+.form{display:grid;gap:10px;margin-top:20px}
+.form input,.form select{
+height:48px;border:1px solid #282e39;border-radius:13px;background:#080a0e;
+color:white;padding:0 13px;outline:none
+}
+.primary{height:48px;border:0;border-radius:13px;background:#7658ff;color:white;font-weight:800}
+
+@media(max-width:760px){.grid{grid-template-columns:1fr 1fr}}
+@media(max-width:470px){.app{padding:12px 12px 95px}.grid{grid-template-columns:1fr}.card{min-height:135px}.hero{padding-top:22px}}
+</style>
+</head>
+<body>
+
+<div class="app">
+<header class="top">
+<div class="brand"><div class="logo">N</div><strong>NEXORA</strong></div>
+<div class="status"><i class="dot"></i> النظام متصل</div>
+</header>
+
+<section class="hero">
+<div class="eyebrow">CLIENT INTELLIGENCE OS</div>
+<h1>حوّل فكرتك إلى<br>نتيجة مع NEXORA.</h1>
+<p>مركز ذكي واحد للوصول إلى الخدمات، المشاريع، التحليل، التسعير والوكلاء.</p>
+
+<div class="ai">
+<div class="aihead"><div class="aiicon" style="animation:float 2.4s ease-in-out infinite">✦</div><b>NEXORA AI</b></div>
+<input class="prompt" id="prompt" placeholder="اكتب ما تريد إنجازه...">
+<button class="send" onclick="askAI()">✦ ابدأ مع NEXORA</button>
+</div>
+</section>
+
+<section class="section">
+<div class="sectionhead"><h2>الخدمات الذكية</h2><span>SMART SERVICES</span></div>
+<div class="grid">
+
+<div class="card" style="--glow:#7c5cff" onclick="openSheet('catalog')">
+<div class="icon">◈</div><h3>الكتالوج الذكي</h3><p>اكتشف الخيارات المناسبة لمشروعك حسب ذوقك واحتياجك.</p><span class="arrow">←</span>
+</div>
+
+<div class="card" style="--glow:#35d9ff" onclick="openSheet('price')">
+<div class="icon">◇</div><h3>التسعير الفوري</h3><p>احصل على تقدير أولي للمشروع والمواد والتنفيذ.</p><span class="arrow">←</span>
+</div>
+
+<div class="card" onclick="openSheet('design')">
+<div class="icon">✧</div><h3>تحليل التصميم</h3><p>حلّل المخطط والتصميم وحوّله إلى معلومات قابلة للفهم.</p><span class="arrow">←</span>
+</div>
+
+<div class="card" onclick="openSheet('project')">
+<div class="icon">⌘</div><h3>مشاريعي</h3><p>تابع تقدم مشاريعك وملفاتك ونتائج الوكلاء من مكان واحد.</p><span class="arrow">←</span>
+</div>
+
+<div class="card" onclick="openSheet('appointment')">
+<div class="icon">◷</div><h3>المواعيد</h3><p>أنشئ موعداً أو تابع المواعيد والمهام القادمة.</p><span class="arrow">←</span>
+</div>
+
+<div class="card" onclick="openSheet('agent')">
+<div class="icon">✦</div><h3>وكيل NEXORA</h3><p>أرسل المهمة ودع المنظومة تحدد المسار المناسب.</p><span class="arrow">←</span>
+</div>
+
+</div>
+</section>
+
+<section class="section">
+<div class="sectionhead"><h2>المشروع الحالي</h2><span>LIVE PROJECT</span></div>
+<div class="project">
+<div class="projecttop"><div class="projectname">مشروعك الرئيسي</div><div class="tag">قيد المعالجة</div></div>
+<div class="progress"><i></i></div>
+<div class="meta"><span>تقدم المشروع</span><span>82%</span></div>
+</div>
+</section>
+
+<section class="section">
+<div class="sectionhead"><h2>النشاط الحي</h2><span>LIVE ACTIVITY</span></div>
+<div class="activity">
+<div class="event"><div class="eventicon">✓</div><div><b>النظام متصل</b><small>NEXORA Core يعمل الآن</small></div></div>
+<div class="event"><div class="eventicon">◉</div><div><b>الوكلاء جاهزون</b><small>يمكن استقبال المهام الجديدة</small></div></div>
+<div class="event"><div class="eventicon">↗</div><div><b>واجهة العميل نشطة</b><small>Client Portal يعمل على النظام المحلي</small></div></div>
+</div>
+</section>
+</div>
+
+<nav class="bottom">
+<button class="nav active" onclick="location.reload()"><div>⌂</div>الرئيسية</button>
+<button class="nav" onclick="openSheet('project')"><div>▣</div>المشاريع</button>
+<button class="nav" onclick="openSheet('agent')"><div>✦</div>الذكاء</button>
+<button class="nav" onclick="openSheet('profile')"><div>◉</div>الحساب</button>
+</nav>
+
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeSheet()">
+<div class="sheet">
+<button class="close" onclick="closeSheet()">×</button>
+<h2 id="sheetTitle">NEXORA</h2>
+<p id="sheetText"></p>
+<div class="form" id="sheetForm"></div>
+</div>
+</div>
+
+<script>
+const data={
+catalog:["الكتالوج الذكي","دع NEXORA تساعدك على استكشاف الخيارات المناسبة لمشروعك.","<select><option>اختر نوع المشروع</option><option>داخلي</option><option>واجهات</option><option>أرضيات</option></select><select><option>الأسلوب المفضل</option><option>فاخر</option><option>عصري</option><option>كلاسيكي</option></select><button class='primary' onclick='demoResult(\"جاري بناء الكتالوج المناسب لك...\")'>إنشاء الكتالوج</button>"],
+price:["التسعير الفوري","أدخل المعلومات الأساسية للحصول على تقدير أولي.","<input placeholder='المساحة بالمتر المربع'><select><option>رخام</option><option>جرانيت</option><option>حجر طبيعي</option></select><button class='primary' onclick='demoResult(\"تم إرسال بيانات التسعير إلى NEXORA AI\")'>احسب التكلفة</button>"],
+design:["تحليل التصميم","ارفع مخططك أو أدخل وصف التصميم ليتم تحليله.","<input type='file'><button class='primary' onclick='demoResult(\"تم تجهيز التصميم للتحليل\")'>تحليل التصميم</button>"],
+project:["مشاريعي","جميع مشاريعك وعمليات NEXORA ستظهر هنا عند ربط الحساب.","<button class='primary' onclick='demoResult(\"لا توجد مشاريع جديدة حالياً\")'>تحديث المشاريع</button>"],
+appointment:["المواعيد","إدارة المواعيد والمهام القادمة.","<input type='date'><input type='time'><button class='primary' onclick='demoResult(\"تم تجهيز طلب الموعد\")'>طلب موعد</button>"],
+agent:["وكيل NEXORA","اكتب المهمة واترك NEXORA تختار الوكيل والمسار المناسب.","<input id='agentTask' placeholder='مثلاً: أريد تقدير مشروع جديد'><button class='primary' onclick='sendTask()'>إرسال المهمة</button>"],
+profile:["الحساب","إعدادات حساب العميل وبياناته ستظهر هنا.","<button class='primary' onclick='demoResult(\"الحساب جاهز\")'>فتح الحساب</button>"]
+};
+
+function openSheet(k){
+let d=data[k]||data.agent;
+sheetTitle.textContent=d[0];sheetText.textContent=d[1];sheetForm.innerHTML=d[2];
+overlay.classList.add("show")
+}
+function closeSheet(){overlay.classList.remove("show")}
+function demoResult(t){sheetText.textContent=t;sheetForm.innerHTML="<button class='primary' onclick='closeSheet()'>حسناً</button>"}
+function sendTask(){
+let v=document.getElementById("agentTask")?.value||"مهمة جديدة";
+demoResult("استلمت NEXORA المهمة: "+v+" — سيتم توجيهها إلى المسار المناسب.")
+}
+function askAI(){
+const btn=document.querySelector(".send");
+btn.innerHTML="◌ NEXORA تستمع...";
+btn.style.transform="scale(.98)";
+setTimeout(()=>{btn.innerHTML="✦ ابدأ مع NEXORA";btn.style.transform=""},900);
+let v=document.getElementById("prompt").value.trim();
+if(!v){openSheet("agent");return}
+openSheet("agent");
+setTimeout(()=>{let x=document.getElementById("agentTask");if(x)x.value=v},50)
+}
+</script>
+</body>
+</html>
+
+<script>
+/* NEXORA LIVE HEARTBEAT */
+setInterval(()=>{
+ const dot=document.querySelector(".dot");
+ if(dot){
+   dot.style.boxShadow="0 0 22px #48e6a2";
+   setTimeout(()=>dot.style.boxShadow="0 0 12px #48e6a2",450);
+ }
+},2200);
+
+/* Touch feedback */
+document.querySelectorAll(".card").forEach(card=>{
+ card.addEventListener("touchstart",()=>card.style.transition="transform .08s");
+ card.addEventListener("touchend",()=>card.style.transition=".28s");
+});
+
+/* Live time */
+const live=document.querySelector(".status");
+setInterval(()=>{
+ if(live) live.innerHTML='<i class="dot"></i> النظام حي · '+new Date().toLocaleTimeString("ar");
+},1000);
+</script>

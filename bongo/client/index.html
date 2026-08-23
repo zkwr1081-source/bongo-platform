@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport"
+      content="width=device-width,initial-scale=1">
+
+<title>بونجو — ممر الحلول المتكامل</title>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+    margin:0;
+    font-family:system-ui,-apple-system,sans-serif;
+    background:#07111f;
+    color:#e5eef9;
+}
+
+.hidden{display:none!important}
+
+header{
+    padding:20px;
+    border-bottom:1px solid #1e334d;
+    background:#0b1728;
+}
+
+.container{
+    width:min(920px,92%);
+    margin:auto;
+}
+
+.logo{
+    font-size:30px;
+    font-weight:800;
+}
+
+.subtitle{
+    color:#8da4bd;
+    margin-top:4px;
+}
+
+.card{
+    background:#0d1c2f;
+    border:1px solid #1d3651;
+    border-radius:18px;
+    padding:20px;
+    margin:18px 0;
+    box-shadow:0 8px 30px rgba(0,0,0,.18);
+}
+
+input,button{
+    width:100%;
+    padding:13px;
+    border-radius:12px;
+    border:1px solid #294562;
+    font:inherit;
+}
+
+input{
+    background:#07111f;
+    color:#fff;
+    margin:8px 0;
+}
+
+button{
+    background:#173451;
+    color:#fff;
+    cursor:pointer;
+    margin-top:8px;
+}
+
+button:hover{
+    background:#21496e;
+}
+
+.primary{
+    background:#2563eb;
+    border-color:#2563eb;
+}
+
+.stat{
+    display:inline-block;
+    padding:12px 15px;
+    margin:5px;
+    border-radius:12px;
+    background:#07111f;
+    border:1px solid #1e334d;
+}
+
+.ok{color:#72e6a5}
+.muted{color:#8da4bd}
+
+.service{
+    padding:14px 0;
+    border-bottom:1px solid #1e334d;
+}
+
+.service:last-child{
+    border-bottom:0;
+}
+
+pre{
+    white-space:pre-wrap;
+    word-break:break-word;
+    background:#07111f;
+    padding:14px;
+    border-radius:12px;
+    overflow:auto;
+}
+
+#login{
+    max-width:500px;
+    margin:70px auto;
+}
+
+.topbar{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    align-items:center;
+}
+
+.logout{
+    width:auto;
+    padding:8px 14px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<div class="container">
+    <div class="logo">بونجو</div>
+    <div class="subtitle">
+        ممر الحلول المتكامل
+    </div>
+</div>
+</header>
+
+<main class="container">
+
+<section id="login" class="card">
+    <h2>الدخول إلى بونجو</h2>
+
+    <p class="muted">
+        ابدأ جلستك للوصول إلى ممر الحلول.
+    </p>
+
+    <input
+        id="name"
+        placeholder="اسمك"
+        autocomplete="name">
+
+    <button
+        class="primary"
+        onclick="login()">
+        دخول إلى بونجو
+    </button>
+
+    <div id="loginError"></div>
+</section>
+
+<section id="app" class="hidden">
+
+<div class="card">
+    <div class="topbar">
+        <div>
+            <h2 id="welcome">مرحبًا</h2>
+            <div class="muted">
+                مساحة العميل
+            </div>
+        </div>
+
+        <button
+            class="logout"
+            onclick="logout()">
+            خروج
+        </button>
+    </div>
+</div>
+
+<div class="card">
+    <h2>حالة بونجو</h2>
+    <div id="status">جارِ الاتصال...</div>
+</div>
+
+<div class="card">
+    <h2>ماذا تحتاج؟</h2>
+
+    <input
+        id="query"
+        placeholder="ابحث عن خدمة أو قدرة">
+
+    <button
+        class="primary"
+        onclick="discover()">
+        اكتشاف الحلول
+    </button>
+
+    <div id="results"></div>
+</div>
+
+<div class="card">
+    <h2>نتيجة التنفيذ</h2>
+    <pre id="result">لم يتم تشغيل خدمة بعد.</pre>
+</div>
+
+</section>
+
+</main>
+
+<script>
+const API = "http://127.0.0.1:8092";
+
+function saveToken(token){
+    localStorage.setItem("bongo_token", token);
+}
+
+function getToken(){
+    return localStorage.getItem("bongo_token");
+}
+
+function clearToken(){
+    localStorage.removeItem("bongo_token");
+}
+
+async function request(path, options={}){
+    const response = await fetch(API + path, options);
+    const data = await response.json();
+
+    if(!response.ok){
+        throw new Error(
+            data.error || "request_failed"
+        );
+    }
+
+    return data;
+}
+
+async function login(){
+    const name =
+        document.getElementById("name").value.trim();
+
+    if(!name){
+        document.getElementById("loginError")
+            .textContent = "اكتب اسمك أولًا.";
+        return;
+    }
+
+    try{
+        const data = await request(
+            "/auth/login",
+            {
+                method:"POST",
+                headers:{
+                    "Content-Type":"application/json"
+                },
+                body:JSON.stringify({name})
+            }
+        );
+
+        saveToken(data.token);
+        showApp(data.user.name);
+
+    }catch(e){
+        document.getElementById("loginError")
+            .textContent =
+            "تعذر إنشاء الجلسة.";
+    }
+}
+
+function showApp(name){
+    document.getElementById("login")
+        .classList.add("hidden");
+
+    document.getElementById("app")
+        .classList.remove("hidden");
+
+    document.getElementById("welcome")
+        .textContent =
+        "مرحبًا " + name;
+
+    loadStatus();
+}
+
+async function checkSession(){
+    const token = getToken();
+
+    if(!token){
+        return;
+    }
+
+    try{
+        const data = await request(
+            "/auth/me",
+            {
+                method:"POST",
+                headers:{
+                    "Content-Type":"application/json"
+                },
+                body:JSON.stringify({token})
+            }
+        );
+
+        if(data.authenticated){
+            showApp(data.user.name);
+        }
+
+    }catch(e){
+        clearToken();
+    }
+}
+
+async function logout(){
+    const token = getToken();
+
+    try{
+        await request(
+            "/auth/logout",
+            {
+                method:"POST",
+                headers:{
+                    "Content-Type":"application/json"
+                },
+                body:JSON.stringify({token})
+            }
+        );
+    }catch(e){}
+
+    clearToken();
+
+    document.getElementById("app")
+        .classList.add("hidden");
+
+    document.getElementById("login")
+        .classList.remove("hidden");
+}
+
+async function loadStatus(){
+    try{
+        const data =
+            await request("/health");
+
+        document.getElementById("status")
+            .innerHTML =
+            '<span class="ok">● بونجو متصل</span>' +
+            '<div class="stat">الخدمات: ' +
+            data.services +
+            '</div>' +
+            '<div class="stat">الفئات: ' +
+            data.categories.length +
+            '</div>';
+
+    }catch(e){
+        document.getElementById("status")
+            .textContent =
+            "بونجو غير متصل حاليًا.";
+    }
+}
+
+async function discover(){
+    const query =
+        document.getElementById("query")
+        .value.trim();
+
+    const results =
+        document.getElementById("results");
+
+    if(!query){
+        results.textContent =
+            "اكتب ما تبحث عنه.";
+        return;
+    }
+
+    results.textContent =
+        "جارِ اكتشاف الحلول...";
+
+    try{
+        const data =
+            await request(
+                "/discover?q=" +
+                encodeURIComponent(query)
+            );
+
+        if(!data.results.length){
+            results.textContent =
+                "لم نجد نتائج.";
+            return;
+        }
+
+        results.innerHTML =
+            data.results.map(item => {
+
+                const name =
+                    item.service || "";
+
+                const description =
+                    item.description ||
+                    item.capability ||
+                    "";
+
+                return `
+                <div class="service">
+                    <strong>${name}</strong>
+                    <div class="muted">
+                        ${description}
+                    </div>
+                    <button
+                        onclick="executeService(
+                          '${name.replace(/'/g,"\\'")}'
+                        )">
+                        تشغيل الحل
+                    </button>
+                </div>`;
+            }).join("");
+
+    }catch(e){
+        results.textContent =
+            "تعذر الاتصال بمحرك الاكتشاف.";
+    }
+}
+
+async function executeService(name){
+    document.getElementById("result")
+        .textContent =
+        "جارِ تشغيل " + name + "...";
+
+    try{
+        const data =
+            await request(
+                "/service/" +
+                encodeURIComponent(name)
+            );
+
+        document.getElementById("result")
+            .textContent =
+            JSON.stringify(
+                data,
+                null,
+                2
+            );
+
+    }catch(e){
+        document.getElementById("result")
+            .textContent =
+            "فشل التنفيذ: " + e.message;
+    }
+}
+
+checkSession();
+</script>
+
+</body>
+</html>

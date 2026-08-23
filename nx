@@ -1,0 +1,120 @@
+#!/data/data/com.termux/files/usr/bin/bash
+
+NEXORA="$HOME/NEXORA"
+UI="http://127.0.0.1:8091"
+
+open_ui() {
+    termux-open-url "$UI" >/dev/null 2>&1
+}
+
+case "${1:-help}" in
+
+    status)
+        curl -sS --max-time 3 "$UI/api/status"
+        open_ui
+        ;;
+
+    open)
+        open_ui
+        ;;
+
+    compile)
+        cd "$NEXORA" || exit 1
+        python3 -m py_compile nexora_unified.py
+        echo "COMPILE: PASS"
+        open_ui
+        ;;
+
+    test)
+        cd "$NEXORA" || exit 1
+        echo "=== NEXORA TEST ==="
+        python3 -m py_compile nexora_unified.py
+        python3 -m py_compile core/engine/engine.py core/agents/analyst.py
+        curl -sS --max-time 3 "$UI/api/status"
+        echo
+        echo "TEST: PASS"
+        open_ui
+        ;;
+
+    logs)
+        cd "$NEXORA" || exit 1
+        tail -n 50 nexora_unified.log
+        open_ui
+        ;;
+
+    engine)
+        cd "$NEXORA" || exit 1
+        python3 - <<'PY'
+from core.engine.engine import NexoraEngine
+from core.agents import AnalystAgent
+
+engine = NexoraEngine()
+engine.register_agent("ANALYST", AnalystAgent())
+
+result = engine.run(
+    task_id="NX-ENGINE-TEST",
+    request="اختبار محرك NEXORA"
+)
+
+print("ENGINE:", result.status)
+print("AGENTS:", result.agents)
+print("VERIFICATION:", result.verification)
+PY
+        open_ui
+        ;;
+
+    agents)
+        curl -sS --max-time 3 "$UI/api/agents"
+        open_ui
+        ;;
+
+    db)
+        cd "$NEXORA" || exit 1
+        ls -lh nexora.db
+        open_ui
+        ;;
+
+    start)
+        cd "$NEXORA" || exit 1
+        if pgrep -f "python3.*nexora_unified.py" >/dev/null; then
+            echo "NEXORA already running"
+        else
+            nohup python3 nexora_unified.py >> nexora_unified.log 2>&1 &
+            sleep 2
+            echo "NEXORA started"
+        fi
+        open_ui
+        ;;
+
+    stop)
+        pkill -f "python3.*nexora_unified.py" 2>/dev/null || true
+        echo "NEXORA stopped"
+        open_ui
+        ;;
+
+    restart)
+        "$0" stop
+        sleep 1
+        "$0" start
+        ;;
+
+    help|*)
+        echo "NEXORA CONTROL"
+        echo
+        echo "1  status   - حالة النظام"
+        echo "2  open     - فتح الواجهة"
+        echo "3  compile  - فحص Python"
+        echo "4  test     - الاختبار الكامل"
+        echo "5  logs     - آخر السجلات"
+        echo "6  engine   - اختبار المحرك"
+        echo "7  agents   - فحص الوكلاء"
+        echo "8  db       - فحص قاعدة البيانات"
+        echo "9  start    - تشغيل NEXORA"
+        echo "10 stop    - إيقاف NEXORA"
+        echo "11 restart - إعادة التشغيل"
+        echo
+        echo "مثال: nx test"
+        open_ui
+        ;;
+
+esac

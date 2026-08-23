@@ -1,0 +1,16 @@
+{
+  "name": "بونجو",
+  "title": "بونجو — ممر الحلول المتكامل",
+  "version": "0.1.0",
+  "architecture": {
+    "registry": true,
+    "router": true,
+    "plugins": true,
+    "api": true,
+    "security": true,
+    "memory": true,
+    "automation": true,
+    "monitoring": true
+  },
+  "service_capacity": 1000
+}

@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXORA OMNI</title>
+<style>
+*{box-sizing:border-box}
+body{
+margin:0;background:#060912;color:#eef3ff;
+font-family:system-ui,-apple-system,Segoe UI,sans-serif
+}
+header{
+height:64px;border-bottom:1px solid #20283a;
+display:flex;align-items:center;justify-content:space-between;
+padding:0 18px;background:#090e18
+}
+.logo{font-weight:900;letter-spacing:2px;font-size:21px}
+.online{color:#66e6a4;font-size:13px}
+.dot{
+display:inline-block;width:8px;height:8px;border-radius:50%;
+background:#66e6a4;margin-left:6px
+}
+main{max-width:1000px;margin:auto;padding:35px 15px}
+.hero{text-align:center;padding-top:25px}
+.symbol{font-size:50px}
+h1{font-size:clamp(38px,8vw,68px);margin:0}
+.sub{color:#8e9ab1;margin:8px 0 30px}
+.search{
+display:flex;gap:8px;max-width:850px;margin:auto;
+background:#0e1420;border:1px solid #29344a;
+padding:8px;border-radius:18px
+}
+input{
+flex:1;min-width:0;background:transparent;border:0;
+outline:0;color:white;padding:15px;font-size:16px
+}
+button{
+border:0;border-radius:13px;padding:0 19px;
+font-weight:800;cursor:pointer
+}
+.send{background:white;color:#05070b}
+.mic{background:#151d2d;color:white;border:1px solid #2b374d}
+.grid{
+margin-top:35px;display:grid;
+grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px
+}
+.card{
+padding:20px;border:1px solid #202b40;
+border-radius:18px;background:#0d1320;cursor:pointer
+}
+.card:hover{border-color:#56647f}
+.card b{display:block;margin:8px 0}
+.card span{color:#8793aa;font-size:13px}
+.workspace{display:none}
+.workspace.active{display:block}
+.back{
+background:none;color:#a8b2c5;padding:0;margin-bottom:20px
+}
+.panel{
+border:1px solid #222d42;border-radius:22px;
+background:#0c121e;padding:20px
+}
+.title{
+display:flex;gap:12px;align-items:center;
+border-bottom:1px solid #202a3c;padding-bottom:18px
+}
+.icon{font-size:35px}
+.title h2{margin:0}
+.title p{margin:5px 0;color:#8290a8;font-size:13px}
+.chat{
+margin-top:18px;min-height:300px;max-height:55vh;
+overflow:auto;padding:4px
+}
+.msg{
+padding:15px;margin:10px 0;border-radius:15px;
+line-height:1.9;white-space:pre-wrap
+}
+.ai{background:#101827;border:1px solid #1e2a3f}
+.user{background:#182238}
+.result{
+margin-top:12px;border-right:3px solid #8fa8ff;
+padding:13px;background:#0a101b;border-radius:10px
+}
+.loading{opacity:.7}
+.workspaceBar{
+display:flex;gap:8px;margin-top:12px;
+background:#0e1420;border:1px solid #29344a;
+padding:7px;border-radius:15px
+}
+.workspaceBar input{padding:12px}
+small{color:#718099}
+@media(max-width:600px){
+.grid{grid-template-columns:1fr 1fr}
+button{padding:0 14px}
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<div class="logo">NEXORA</div>
+<div class="online"><span class="dot"></span>متاحة الآن</div>
+</header>
+
+<main>
+
+<section id="home" class="hero">
+
+<div class="symbol">✦</div>
+<h1>NEXORA</h1>
+<div class="sub">
+INTELLIGENCE • AUTOMATION • RESULTS
+</div>
+
+<div class="search">
+<input id="mainInput"
+placeholder="ماذا تريد أن تنجز اليوم؟"
+onkeydown="if(event.key==='Enter')ask()">
+<button class="mic" onclick="voice()">🎙</button>
+<button class="send" onclick="ask()">ابدأ</button>
+</div>
+
+<div class="grid">
+
+<div class="card" onclick="quick('تطوير مشروع نكسورة')">
+🔎<b>اكتشاف حل</b><span>تحليل المشكلة وبناء المسار</span>
+</div>
+
+<div class="card" onclick="quick('إنشاء مشروع جديد')">
+🚀<b>مشروع جديد</b><span>تحويل الفكرة إلى خطة</span>
+</div>
+
+<div class="card" onclick="quick('تحليل فكرة مشروع')">
+💡<b>تحليل فكرة</b><span>دراسة الفكرة والفجوات</span>
+</div>
+
+<div class="card" onclick="quick('إنشاء نظام أتمتة')">
+⚙️<b>أتمتة</b><span>تصميم سير عمل ذكي</span>
+</div>
+
+<div class="card" onclick="quick('تحسين الذكاء الاصطناعي')">
+🧠<b>الذكاء</b><span>تحليل وتطوير منظومة AI</span>
+</div>
+
+<div class="card" onclick="quick('فحص أمان المشروع')">
+🛡️<b>الأمان</b><span>تحليل المخاطر</span>
+</div>
+
+</div>
+
+</section>
+
+
+<section id="workspace" class="workspace">
+
+<button class="back" onclick="home()">← الرئيسية</button>
+
+<div class="panel">
+
+<div class="title">
+<div id="wIcon" class="icon">✦</div>
+<div>
+<h2 id="wTitle">NEXORA</h2>
+<p>مساحة العمل الذكية</p>
+</div>
+</div>
+
+<div id="chat" class="chat"></div>
+
+<div class="workspaceBar">
+<input id="workInput"
+placeholder="اكتب طلبًا آخر..."
+onkeydown="if(event.key==='Enter')send()">
+<button class="send" onclick="send()">إرسال</button>
+</div>
+
+</div>
+
+</section>
+
+</main>
+
+<script>
+
+const chat=document.getElementById("chat");
+
+function quick(text){
+document.getElementById("mainInput").value=text;
+ask();
+}
+
+function ask(){
+
+const input=document.getElementById("mainInput");
+const text=input.value.trim();
+
+if(!text){
+input.focus();
+return;
+}
+
+openWorkspace("✦","مهمتك الجديدة");
+addUser(text);
+input.value="";
+
+setTimeout(()=>generate(text),180);
+
+}
+
+function openWorkspace(icon,title){
+
+document.getElementById("home").style.display="none";
+document.getElementById("workspace").classList.add("active");
+
+document.getElementById("wIcon").textContent=icon;
+document.getElementById("wTitle").textContent=title;
+
+chat.innerHTML="";
+
+addAI(
+"مرحبًا بك في NEXORA.\n"+
+"أرسل طلبك وسأحلله وأعطيك نتيجة مباشرة."
+);
+
+}
+
+function addUser(text){
+
+const el=document.createElement("div");
+el.className="msg user";
+el.textContent="أنت:\n"+text;
+chat.appendChild(el);
+scroll();
+
+}
+
+function addAI(text){
+
+const el=document.createElement("div");
+el.className="msg ai";
+el.innerHTML=text;
+chat.appendChild(el);
+scroll();
+
+}
+
+function send(){
+
+const input=document.getElementById("workInput");
+const text=input.value.trim();
+
+if(!text)return;
+
+addUser(text);
+input.value="";
+
+setTimeout(()=>generate(text),180);
+
+}
+
+function generate(text){
+
+let lower=text.toLowerCase();
+let result="";
+
+if(
+lower.includes("نكسورة") ||
+lower.includes("nexora") ||
+lower.includes("مشروع")
+){
+
+result=
+`<b>✦ تحليل NEXORA</b>
+
+تم فهم طلبك على أنه طلب تطوير منظومة NEXORA.
+
+<div class="result">
+<b>1 — النواة</b>
+إنشاء Core مركزي لإدارة المهام والوكلاء والخدمات.
+</div>
+
+<div class="result">
+<b>2 — الذكاء</b>
+طبقة AI قابلة لتوصيل نماذج محلية أو سحابية متعددة بدل الاعتماد على نموذج واحد.
+</div>
+
+<div class="result">
+<b>3 — الوكلاء</b>
+تقسيم المهام إلى وكلاء متخصصة مثل التحليل والتخطيط والبرمجة والأمان والبحث.
+</div>
+
+<div class="result">
+<b>4 — الذاكرة</b>
+إضافة Memory لحفظ سياق المشاريع والقرارات والنتائج.
+</div>
+
+<div class="result">
+<b>5 — التنفيذ</b>
+ربط الوكلاء بالأدوات والـAPI والملفات وسير العمل.
+</div>
+
+<div class="result">
+<b>6 — الواجهة</b>
+واجهة المستخدم الحالية تصبح بوابة الطلب، بينما التنفيذ يتم خلفها عبر الـCore.
+</div>
+
+<div class="result">
+<b>الخطوة التالية</b>
+بناء طبقة Core + Agent Manager + API وربطها بهذه الواجهة.
+</div>`;
+
+}else if(
+lower.includes("كود") ||
+lower.includes("برمج") ||
+lower.includes("python") ||
+lower.includes("بايثون")
+){
+
+result=
+`<b>🧑‍💻 وضع البرمجة</b>
+
+تم تصنيف طلبك كمهمة برمجية.
+
+<div class="result">
+<b>تحليل</b>
+تحديد المتطلبات والمدخلات والمخرجات.
+</div>
+
+<div class="result">
+<b>التخطيط</b>
+تقسيم المهمة إلى وحدات صغيرة قابلة للاختبار.
+</div>
+
+<div class="result">
+<b>التنفيذ</b>
+إنشاء الكود ثم التحقق منه واختباره.
+</div>
+
+<div class="result">
+<b>التحقق</b>
+فحص الأخطاء والاعتماديات قبل اعتماد النتيجة.
+</div>`;
+
+}else if(
+lower.includes("فكرة") ||
+lower.includes("فكره")
+){
+
+result=
+`<b>💡 تحليل الفكرة</b>
+
+<div class="result">
+<b>المشكلة</b>
+تحديد المشكلة التي تحاول الفكرة حلها.
+</div>
+
+<div class="result">
+<b>القيمة</b>
+تحديد لماذا سيستخدمها الناس.
+</div>
+
+<div class="result">
+<b>السوق</b>
+تحديد المستخدمين والمنافسين والفرصة.
+</div>
+
+<div class="result">
+<b>التنفيذ</b>
+تحويل الفكرة إلى MVP صغير قابل للاختبار.
+</div>`;
+
+}else{
+
+result=
+`<b>✦ NEXORA</b>
+
+فهمت طلبك:
+
+<div class="result">
+${escapeHTML(text)}
+</div>
+
+<b>المسار المقترح:</b>
+
+<div class="result">
+① تحليل الطلب
+<br>② تحديد الهدف
+<br>③ تقسيم المهمة
+<br>④ اختيار الأدوات
+<br>⑤ تنفيذ الخطوات
+<br>⑥ التحقق من النتيجة
+</div>
+
+<small>هذه النتيجة صادرة من محرك NEXORA المحلي في الواجهة الحالية.</small>`;
+
+}
+
+addAI(result);
+
+}
+
+function escapeHTML(s){
+
+return s.replace(/[&<>"']/g,function(c){
+return {
+"&":"&amp;",
+"<":"&lt;",
+">":"&gt;",
+'"':"&quot;",
+"'":"&#039;"
+}[c];
+});
+
+}
+
+function home(){
+
+document.getElementById("workspace").classList.remove("active");
+document.getElementById("home").style.display="block";
+window.scrollTo({top:0,behavior:"smooth"});
+
+}
+
+function scroll(){
+chat.scrollTop=chat.scrollHeight;
+}
+
+function voice(){
+
+const R=window.SpeechRecognition||window.webkitSpeechRecognition;
+
+if(!R){
+alert("التعرف الصوتي غير متاح في هذا المتصفح.");
+return;
+}
+
+const r=new R();
+
+r.lang="ar-SA";
+
+r.onresult=function(e){
+document.getElementById("mainInput").value=
+e.results[0][0].transcript;
+};
+
+r.start();
+
+}
+
+</script>
+
+</body>
+</html>
