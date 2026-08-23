@@ -1,11 +1,12 @@
 from fastapi import FastAPI, HTTPException
+
 from bongo.api.services import public_services, public_service
 from bongo.api.customer import prepare_service_order
 
 app = FastAPI(
     title="BONGO",
     description="بونجو — ممر الحلول المتكامل",
-    version="1.2.0",
+    version="1.3.0",
 )
 
 
@@ -14,15 +15,23 @@ def home():
     return {
         "name": "BONGO",
         "description": "ممر الحلول المتكامل",
-        "status": "online"
+        "status": "online",
+        "version": "1.3.0",
+    }
+
+
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "service": "BONGO",
+        "version": "1.3.0",
     }
 
 
 @app.get("/api/services")
 def services():
-    return {
-        "services": public_services()
-    }
+    return {"services": public_services()}
 
 
 @app.get("/api/services/{service_id}")
@@ -32,7 +41,7 @@ def service(service_id: str):
     if result is None:
         raise HTTPException(
             status_code=404,
-            detail="Service not found"
+            detail="Service not found",
         )
 
     return result
@@ -49,11 +58,10 @@ def create_order(service_id: str):
             "amount": order.amount,
             "currency": order.currency,
             "payment_status": order.payment_status.value,
-            "message": "Order created. Payment provider is not connected yet."
         }
 
     except ValueError:
         raise HTTPException(
             status_code=404,
-            detail="Service not found"
+            detail="Service not found",
         )

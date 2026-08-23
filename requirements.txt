@@ -1,1 +1,2 @@
-# BONGO currently uses Python standard library.
+fastapi
+uvicorn[standard]
