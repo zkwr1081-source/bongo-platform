@@ -12,12 +12,12 @@ def test_build_plan_creates_reviewable_tasks():
 
 
 @pytest.mark.parametrize(
-    "request",
+    "request_text",
     ["", "   "],
 )
-def test_build_plan_rejects_empty_request(request):
+def test_build_plan_rejects_empty_request(request_text):
     with pytest.raises(ValueError):
-        build_plan(request)
+        build_plan(request_text)
 
 
 def test_build_plan_rejects_oversized_request():
@@ -26,7 +26,7 @@ def test_build_plan_rejects_oversized_request():
 
 
 @pytest.mark.parametrize(
-    "request",
+    "request_text",
     [
         "Deploy the service to production",
         "Delete data from the customer database",
@@ -34,8 +34,8 @@ def test_build_plan_rejects_oversized_request():
         "Merge to main",
     ],
 )
-def test_sensitive_requests_get_explicit_approval_gate(request):
-    plan = build_plan(request)
+def test_sensitive_requests_get_explicit_approval_gate(request_text):
+    plan = build_plan(request_text)
     assert any("sensitive operation" in gate for gate in plan.approval_gates)
 
 
