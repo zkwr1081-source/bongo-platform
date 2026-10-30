@@ -1,8 +1,7 @@
 """A bounded, auditable agent task runtime.
 
-This foundation deliberately separates planning from side effects. Providers may
-be deterministic (tests) or OpenAI-compatible HTTP endpoints. No GitHub write,
-shell execution, deployment, payment, or external publishing tool is exposed.
+Planning is separated from side effects. This runtime has no shell, GitHub write,
+deployment, payment, or external publishing capability.
 """
 from __future__ import annotations
 
@@ -12,8 +11,9 @@ import sqlite3
 import time
 import urllib.request
 import uuid
+from contextlib import contextmanager
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
@@ -51,7 +51,7 @@ class Provider(Protocol):
 class MockProvider:
     """Predictable provider for offline tests and safe dry runs."""
     def generate(self, system_prompt: str, instruction: str) -> str:
-        return "MOCK RESULT\n" + instruction[:2000]
+        return "MOCK RESULT\\n" + instruction[:2000]
 
 
 class OpenAICompatibleProvider:
@@ -61,8 +61,8 @@ class OpenAICompatibleProvider:
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.api_key = api_key
-        self.timeout = max(5, min(timeout, 120))
-        self.max_response_bytes = max_response_bytes
+        self.timeout = max(5, min(int(timeout), 120))
+        self.max_response_bytes = max(1024, min(int(max_response_bytes), 5_000_000))
 
     def generate(self, system_prompt: str, instruction: str) -> str:
         url = self.base_url
@@ -103,19 +103,20 @@ DEFAULT_AGENTS = (
 
 
 class AgentRuntime:
-    """SQLite-backed task queue with bounded concurrency and explicit audit trail."""
+    """SQLite-backed task queue with bounded concurrency and an audit trail."""
     def __init__(self, db_path: str | Path, agents=DEFAULT_AGENTS,
                  provider: Provider | None = None, max_workers: int = 4,
                  max_tasks_per_batch: int = 20):
         self.db_path = str(db_path)
-        self.agents = {a.agent_id: a for a in agents}
-        if len(self.agents) != len(tuple(agents)):
+        agent_list = tuple(agents)
+        self.agents = {a.agent_id: a for a in agent_list}
+        if len(self.agents) != len(agent_list):
             raise ValueError("Agent IDs must be unique")
         self.provider = provider or MockProvider()
         self.max_workers = max(1, min(int(max_workers), 16))
         self.max_tasks_per_batch = max(1, min(int(max_tasks_per_batch), 100))
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-        with self._connect() as db:
+        with self._database() as db:
             db.execute("""CREATE TABLE IF NOT EXISTS tasks (
                 task_id TEXT PRIMARY KEY, agent_id TEXT NOT NULL,
                 instruction TEXT NOT NULL, status TEXT NOT NULL,
@@ -127,6 +128,16 @@ class AgentRuntime:
         db.row_factory = sqlite3.Row
         return db
 
+    @contextmanager
+    def _database(self):
+        """Close every SQLite connection and commit/rollback its transaction."""
+        db = self._connect()
+        try:
+            with db:
+                yield db
+        finally:
+            db.close()
+
     def submit(self, agent_id: str, instruction: str) -> Task:
         if agent_id not in self.agents:
             raise KeyError("Unknown agent_id")
@@ -134,7 +145,7 @@ class AgentRuntime:
         if not instruction or len(instruction) > 12000:
             raise ValueError("Instruction must contain 1..12000 characters")
         task_id, now = str(uuid.uuid4()), time.time()
-        with self._connect() as db:
+        with self._database() as db:
             db.execute("INSERT INTO tasks(task_id,agent_id,instruction,status,created_at,updated_at) VALUES(?,?,?,?,?,?)",
                        (task_id, agent_id, instruction, "queued", now, now))
         return Task(task_id, agent_id, instruction)
@@ -142,18 +153,19 @@ class AgentRuntime:
     def _run_one(self, task: Task) -> TaskResult:
         agent = self.agents[task.agent_id]
         try:
-            output = self.provider.generate(agent.system_prompt, task.instruction)
-            output = str(output)[:agent.max_output_chars]
+            output = str(self.provider.generate(agent.system_prompt, task.instruction))
+            output = output[:agent.max_output_chars]
             status, error = "completed", ""
-        except Exception as exc:  # persisted without secrets or traceback
-            output, status, error = "", "failed", type(exc).__name__ + ": task execution failed"
-        with self._connect() as db:
+        except Exception as exc:
+            output, status = "", "failed"
+            error = type(exc).__name__ + ": task execution failed"
+        with self._database() as db:
             db.execute("UPDATE tasks SET status=?,output=?,error=?,updated_at=? WHERE task_id=?",
                        (status, output, error, time.time(), task.task_id))
         return TaskResult(task.task_id, task.agent_id, status, output, error)
 
     def run_batch(self) -> list[TaskResult]:
-        with self._connect() as db:
+        with self._database() as db:
             rows = db.execute("SELECT task_id,agent_id,instruction,status FROM tasks "
                               "WHERE status='queued' ORDER BY created_at LIMIT ?",
                               (self.max_tasks_per_batch,)).fetchall()
@@ -163,13 +175,13 @@ class AgentRuntime:
                            (time.time(), task.task_id))
         results = []
         with ThreadPoolExecutor(max_workers=self.max_workers) as pool:
-            futures = [pool.submit(self._run_one, t) for t in tasks]
+            futures = [pool.submit(self._run_one, task) for task in tasks]
             for future in as_completed(futures):
                 results.append(future.result())
-        return sorted(results, key=lambda r: r.task_id)
+        return sorted(results, key=lambda result: result.task_id)
 
     def get_task(self, task_id: str) -> dict | None:
-        with self._connect() as db:
+        with self._database() as db:
             row = db.execute("SELECT * FROM tasks WHERE task_id=?", (task_id,)).fetchone()
         return dict(row) if row else None
 
