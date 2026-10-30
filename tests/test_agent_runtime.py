@@ -18,6 +18,24 @@ class AgentRuntimeTests(unittest.TestCase):
         self.assertGreaterEqual(len(self.runtime.agents), 5)
         self.assertEqual(len(self.runtime.agents), len(set(self.runtime.agents)))
 
+    def test_registry_accepts_generator(self):
+        agents = (agent for agent in (
+            Agent("one", "One", "test", "prompt"),
+            Agent("two", "Two", "test", "prompt"),
+        ))
+        runtime = AgentRuntime(Path(self.tmp.name) / "generator.sqlite3", agents=agents)
+        self.assertEqual(set(runtime.agents), {"one", "two"})
+
+    def test_registry_rejects_duplicate_ids_from_generator(self):
+        duplicate_agents = (
+            agent for agent in (
+                Agent("same", "First", "test", "prompt"),
+                Agent("same", "Second", "test", "prompt"),
+            )
+        )
+        with self.assertRaises(ValueError):
+            AgentRuntime(Path(self.tmp.name) / "duplicate.sqlite3", agents=duplicate_agents)
+
     def test_submit_and_execute(self):
         task = self.runtime.submit("scout-01", "Find unmet needs in water access")
         result = self.runtime.run_batch()
