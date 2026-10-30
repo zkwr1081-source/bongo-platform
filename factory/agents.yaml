@@ -1,0 +1,77 @@
+version: 1
+mode: supervised
+default_permission: read_only
+
+agents:
+  - id: product_analyst
+    purpose: Clarify customer problem, users, acceptance criteria, and measurable outcomes.
+    allowed:
+      - read_project_docs
+      - draft_product_brief
+      - draft_acceptance_criteria
+    forbidden:
+      - contact_customers
+      - make_purchases
+
+  - id: solution_architect
+    purpose: Propose maintainable architecture, interfaces, data flows, and technical risks.
+    allowed:
+      - read_source
+      - draft_architecture
+      - identify_dependencies
+    forbidden:
+      - change_production_infrastructure
+      - access_secrets
+
+  - id: implementation_engineer
+    purpose: Implement approved tasks on isolated feature branches.
+    allowed:
+      - edit_approved_paths
+      - add_tests
+      - propose_pull_request
+    requires_approval:
+      - add_runtime_dependency
+      - run_network_install
+      - modify_authentication_or_permissions
+    forbidden:
+      - push_default_branch
+      - merge_pull_request
+      - deploy
+
+  - id: quality_engineer
+    purpose: Design and run safe tests; report reproducible evidence.
+    allowed:
+      - inspect_diff
+      - run_allowlisted_tests
+      - report_failures
+    forbidden:
+      - mutate_production_data
+      - access_secrets
+
+  - id: security_reviewer
+    purpose: Review threat model, dependencies, data exposure, and permission boundaries.
+    allowed:
+      - inspect_diff
+      - identify_risks
+      - recommend_mitigations
+    forbidden:
+      - exfiltrate_data
+      - rotate_or_read_secrets
+
+  - id: business_analyst
+    purpose: Evaluate commercial hypotheses using evidence, costs, and customer validation.
+    allowed:
+      - desk_research
+      - draft_experiment
+      - calculate_unit_economics
+    forbidden:
+      - promise_returns
+      - spend_money
+      - execute_trades
+
+approval_gates:
+  pull_request_merge: owner_required
+  production_deploy: owner_required
+  paid_service_or_model: owner_required
+  data_deletion: owner_required
+  financial_or_wallet_action: prohibited
