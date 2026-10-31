@@ -103,6 +103,9 @@ async def summarize(snapshot: list[dict[str, Any]]) -> str:
         if repo["pulls"]:
             lines.append("طلبات الدمج المفتوحة:")
             lines.extend(f"• {p['title']} — {p['url']}" for p in repo["pulls"][:4])
+        if repo["issues"]:
+            lines.append("المشكلات المفتوحة التي حُدّثت مؤخرًا:")
+            lines.extend(f"• {issue['title']} — {issue['url']}" for issue in repo["issues"][:4])
         if repo.get("errors"):
             lines.append("⚠️ تعذّر جلب بعض البيانات؛ راجع صلاحيات GitHub والاتصال.")
     lines.append("\n💡 الأفكار المستقبلية تُعرض كتوصيات وليست مشاريع منفّذة أو أرباحًا مؤكدة.")
