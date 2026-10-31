@@ -1,0 +1,29 @@
+name: NEXORA CI
+
+on:
+  push:
+    branches: ["main", "nexora/**"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nexora-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile NEXORA modules
+        run: python -m compileall -q nexora_agents.py nexora_model_adapter.py server.py tests
+      - name: Run NEXORA unit tests
+        run: python -m unittest discover -s tests -p 'test_nexora*.py' -v
