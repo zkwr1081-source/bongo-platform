@@ -1294,129 +1294,45 @@ class Handler(BaseHTTPRequestHandler):
 
 
     def do_POST(self):
-
         if self.path != "/api/ask":
-
             self.json_response(
-                {
-                    "ok":False,
-                    "error":"not_found"
-                },
-                404
+                {"ok": False, "error": "not_found"},
+                404,
             )
-
             return
 
-
         try:
-
-            length =
-                int(
-                    self.headers
-                    .get(
-                        "Content-Length",
-                        "0"
-                    )
-                )
-
-            raw =
-                self.rfile.read(
-                    length
-                )
-
-            data =
-                json.loads(
-                    raw.decode("utf-8")
-                )
-
-            message =
-                str(
-                    data.get(
-                        "message",
-                        ""
-                    )
-                ).strip()
+            length = int(self.headers.get("Content-Length", "0"))
+            raw = self.rfile.read(length)
+            data = json.loads(raw.decode("utf-8"))
+            message = str(data.get("message", "")).strip()
 
             if not message:
-
                 self.json_response(
-                    {
-                        "ok":False,
-                        "error":
-                            "empty_message"
-                    },
-                    400
+                    {"ok": False, "error": "empty_message"},
+                    400,
                 )
-
                 return
 
-
-            task_id =
-                create_task(
-                    message
-                )
-
-            save_conversation(
-                "user",
-                message
-            )
-
-            save_event(
-                "task_received"
-            )
-
-
-            result =
-                ask_openai(
-                    message
-                )
-
+            task_id = create_task(message)
+            save_conversation("user", message)
+            save_event("task_received")
+            result = ask_openai(message)
 
             if result["ok"]:
-
-                save_conversation(
-                    "assistant",
-                    result["answer"]
-                )
-
-                finish_task(
-                    task_id,
-                    "completed"
-                )
-
-                save_event(
-                    "task_completed"
-                )
-
-                self.json_response(
-                    result
-                )
-
+                save_conversation("assistant", result["answer"])
+                finish_task(task_id, "completed")
+                save_event("task_completed")
+                self.json_response(result)
             else:
-
-                finish_task(
-                    task_id,
-                    "error"
-                )
-
-                save_event(
-                    "ai_error"
-                )
-
-                self.json_response(
-                    result,
-                    502
-                )
-
+                finish_task(task_id, "error")
+                save_event("ai_error")
+                self.json_response(result, 502)
 
         except Exception as error:
-
             self.json_response(
-                {
-                    "ok":False,
-                    "error":str(error)
-                },
-                500
+                {"ok": False, "error": str(error)},
+                500,
             )
 
 
