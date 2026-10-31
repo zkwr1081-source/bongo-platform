@@ -1,0 +1,54 @@
+name: NEXORA Python Quality
+
+on:
+  push:
+    branches: ["main", "nexora/**"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nexora-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install project and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pytest
+
+      - name: Compile core Python modules
+        run: |
+          python -m compileall -q bongo tests
+          python -m py_compile server.py nexora_agents.py nexora_model_adapter.py
+
+      - name: Run test suite
+        run: python -m pytest -q
+
+      - name: Verify agent registry metadata
+        run: |
+          python - <<'PY'
+          from nexora_agents import REGISTRY, registry_summary
+          summary = registry_summary()
+          assert len(REGISTRY) == 1000
+          assert len({agent.agent_id for agent in REGISTRY}) == 1000
+          assert summary["departments"] == 20
+          print(summary)
+          PY
