@@ -16,6 +16,7 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -26,6 +27,8 @@ jobs:
       - name: Install runtime and test dependencies
         run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt pytest
       - name: Compile Python modules
-        run: python -m compileall -q bongo tests
+        run: |
+          python -m compileall -q bongo nexora factory tests *.py
+          if [ -d bongo_agents ]; then python -m compileall -q bongo_agents; fi
       - name: Run test suite
         run: python -m pytest -q
