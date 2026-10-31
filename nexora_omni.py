@@ -1373,11 +1373,7 @@ def main():
     )
     print("=" * 60)
 
-    server =
-        ThreadingHTTPServer(
-            (HOST,PORT),
-            Handler
-        )
+    server = ThreadingHTTPServer((HOST, PORT), Handler)
 
     server.serve_forever()
 
