@@ -15,6 +15,7 @@ import json
 import os
 import urllib.error
 import urllib.request
+from urllib.parse import urlsplit
 from typing import Any
 
 from nexora_agents import AgentSpec, run_batch
@@ -39,8 +40,25 @@ def _settings() -> tuple[str, str, str]:
     ) if not value]
     if missing:
         raise ModelConfigurationError("Missing environment variables: " + ", ".join(missing))
-    if not base_url.startswith(("https://", "http://")):
-        raise ModelConfigurationError("NEXORA_BASE_URL must start with http:// or https://")
+    try:
+        parsed_url = urlsplit(base_url)
+        valid_port = parsed_url.port is None or 1 <= parsed_url.port <= 65535
+    except ValueError:
+        valid_port = False
+        parsed_url = None
+    if (
+        parsed_url is None
+        or parsed_url.scheme not in ("https", "http")
+        or not parsed_url.hostname
+        or parsed_url.username is not None
+        or parsed_url.password is not None
+        or parsed_url.query
+        or parsed_url.fragment
+        or not valid_port
+    ):
+        raise ModelConfigurationError(
+            "NEXORA_BASE_URL must be a valid http(s) URL without credentials, query, or fragment"
+        )
     return base_url, api_key, model
 
 
