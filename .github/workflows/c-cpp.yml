@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-\${{ github.workflow }}-\${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -26,6 +26,6 @@ jobs:
       - name: Install runtime and test dependencies
         run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt pytest
       - name: Compile Python modules
-        run: python -m compileall -q bongo tests
+        run: python -m compileall -q bongo tests nexora_finance_observer.py nexora_finance_dashboard.py
       - name: Run test suite
         run: python -m pytest -q
