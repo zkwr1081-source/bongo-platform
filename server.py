@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 import os
+import urllib.error
+import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
@@ -19,6 +21,42 @@ HOST = os.getenv("NEXORA_HOST", "127.0.0.1")
 PORT = int(os.getenv("NEXORA_PORT", "8080"))
 ROOT = Path(__file__).resolve().parent
 INDEX = ROOT / "web" / "index.html"
+GITHUB_REPO = os.getenv("NEXORA_GITHUB_REPO", "zkwr1081-source/bongo-platform")
+GITHUB_API = "https://api.github.com"
+
+
+def github_api_json(path: str) -> dict:
+    request = urllib.request.Request(
+        f"{GITHUB_API}{path}",
+        headers={"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "NEXORA-GitHub-Status"},
+        method="GET",
+    )
+    with urllib.request.urlopen(request, timeout=8) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def github_status() -> dict:
+    owner, name = GITHUB_REPO.split("/", 1)
+    prefix = f"/repos/{owner}/{name}"
+    repository = github_api_json(prefix)
+    commit = github_api_json(f"{prefix}/commits/{repository['default_branch']}")
+    try:
+        runs = github_api_json(f"{prefix}/actions/runs?per_page=1")
+        latest_run = (runs.get("workflow_runs") or [None])[0]
+    except urllib.error.HTTPError as exc:
+        if exc.code not in (403, 404):
+            raise
+        latest_run = None
+    return {
+        "connected": True,
+        "repository": repository["full_name"],
+        "html_url": repository["html_url"],
+        "visibility": repository["visibility"],
+        "default_branch": repository["default_branch"],
+        "latest_commit": {"sha": commit["sha"], "short_sha": commit["sha"][:7], "message": commit["commit"]["message"].splitlines()[0], "html_url": commit["html_url"]},
+        "latest_workflow": ({"name": latest_run.get("name"), "status": latest_run.get("status"), "conclusion": latest_run.get("conclusion"), "html_url": latest_run.get("html_url")} if latest_run else None),
+        "source": "GitHub REST API",
+    }
 
 
 class NexoraHandler(BaseHTTPRequestHandler):
@@ -49,6 +87,22 @@ class NexoraHandler(BaseHTTPRequestHandler):
 
         if path == "/health":
             self._json(200, {"ok": True, "service": "nexora-web"})
+            return
+
+
+        if path == "/api/github":
+            try:
+                self._json(200, github_status())
+            except (urllib.error.URLError, TimeoutError, ValueError, KeyError) as exc:
+                self._json(502, {"connected": False, "error": str(exc)[:240]})
+            return
+
+        if path == "/github-status.js":
+            script = ROOT / "web" / "github-status.js"
+            try:
+                self._send(200, script.read_bytes(), "application/javascript; charset=utf-8")
+            except OSError:
+                self._json(404, {"error": "github_dashboard_script_unavailable"})
             return
 
         if path == "/api/status":
