@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 ROOT = Path(__file__).resolve().parent
 CHECK_INTERVAL_SECONDS = 60
 API_TOKEN = os.getenv("NEXORA_API_TOKEN", "").strip()
+REQUIRED_DB_TABLES = frozenset({"agents", "tasks", "memories", "events"})
 
 logging.basicConfig(
     level=os.getenv("NEXORA_LOG_LEVEL", "INFO").upper(),
@@ -70,14 +71,30 @@ def _load_core():
 def _check_sqlite(database_path: str) -> dict[str, Any]:
     path = Path(database_path).resolve()
     if not path.is_file():
-        return {"ok": False, "detail": "database_file_missing"}
+        return {
+            "ok": False,
+            "detail": "database_file_missing",
+            "missing_tables": sorted(REQUIRED_DB_TABLES),
+        }
 
     # as_uri() safely quotes spaces and special characters in filesystem paths.
     connection = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=5)
     try:
-        row = connection.execute("PRAGMA quick_check").fetchone()
-        result = row[0] if row else "no_result"
-        return {"ok": result == "ok", "detail": result}
+        integrity_row = connection.execute("PRAGMA quick_check").fetchone()
+        integrity = integrity_row[0] if integrity_row else "no_result"
+        present_tables = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+        missing_tables = sorted(REQUIRED_DB_TABLES - present_tables)
+        return {
+            "ok": integrity == "ok" and not missing_tables,
+            "detail": integrity,
+            "tables_present": sorted(REQUIRED_DB_TABLES & present_tables),
+            "missing_tables": missing_tables,
+        }
     finally:
         connection.close()
 
@@ -95,6 +112,10 @@ def _perform_health_check(core) -> dict[str, Any]:
             "VERIFY_AGENT": core.VERIFY_AGENT is not None,
             "UNIVERSAL_INTELLIGENCE_AGENT": core.UNIVERSAL_INTELLIGENCE_AGENT is not None,
             "process_task": callable(core.process_task),
+            "DB.agents": callable(getattr(core.DB, "agents", None)),
+            "DB.tasks": callable(getattr(core.DB, "tasks", None)),
+            "DB.memories": callable(getattr(core.DB, "memories", None)),
+            "DB.stats": callable(getattr(core.DB, "stats", None)),
         }
         db_path = str(core.DB.path)
         database = _check_sqlite(db_path)
@@ -158,7 +179,7 @@ async def lifespan(app: FastAPI):
         logger.info("NEXORA health monitor stopped")
 
 
-app = FastAPI(title="NEXORA Gateway", version="1.1.0", lifespan=lifespan)
+app = FastAPI(title="NEXORA Gateway", version="1.2.0", lifespan=lifespan)
 
 
 class TaskRequest(BaseModel):
