@@ -70,6 +70,7 @@ python nexora_finance_dashboard.py
 ## الاختبارات
 
 ~~~bash
+python -m pip install pytest httpx2
 python -m pytest -q tests/test_nexora_finance_observer.py tests/test_nexora_finance_dashboard.py
 ~~~
 
