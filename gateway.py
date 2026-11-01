@@ -34,7 +34,7 @@ CORE_FILES = (
     "action_engine.py",
     "command_gateway.py",
     "core/agents/orchestrator.py",
-    "core/agents/analyst_agent.py",
+    "core/agents/analyst.py",
     "core/agents/verify_agent.py",
 )
 
