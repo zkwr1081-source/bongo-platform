@@ -6,7 +6,7 @@ NEXORA's dashboard and agent execution server is intended for local-first operat
 
 - The default bind address is `127.0.0.1`.
 - Unauthenticated agent execution is permitted only for loopback binds (`127.0.0.1`, `::1`, or `localhost`).
-- A non-loopback bind is rejected at startup unless `NEXORA_EXECUTION_TOKEN` is configured.
+- A non-loopback bind is rejected at startup unless `NEXORA_EXECUTION_TOKEN` is configured with at least 32 UTF-8 bytes. Generate a high-entropy value (for example, `secrets.token_urlsafe(48)`) and store it in a secret manager.
 - When the token is configured, every `POST /api/agents/run` request must include `Authorization: Bearer <token>`, including requests from localhost.
 - Token comparison uses a constant-time comparison. The application does not write the token to its request logs.
 - The browser dashboard provides a password field for the execution token. The value stays in page memory, is sent only as a same-origin Bearer header, and is not written to localStorage. Reloading the page clears the field.
