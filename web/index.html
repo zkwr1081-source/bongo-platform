@@ -110,5 +110,5 @@ try{const g=await getJSON('/api/github');document.getElementById('mGithub').text
 const now=new Date().toLocaleString('ar');document.getElementById('lastRefresh').textContent=now;document.getElementById('diagnostics').textContent=diag.join('\n\n')}
 document.getElementById('refresh').addEventListener('click',refresh);renderModules();refresh();setInterval(refresh,60000);
 </script>
-<script src="/github-status.js" defer></script><script src="/agent-console.js" defer></script>
+<script src="/agent-console.js" defer></script>
 </body></html>
