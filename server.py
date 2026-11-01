@@ -8,6 +8,8 @@ Status:    http://127.0.0.1:8080/api/status
 from __future__ import annotations
 
 import asyncio
+import hmac
+import ipaddress
 import json
 import os
 import urllib.error
@@ -25,6 +27,50 @@ ROOT = Path(__file__).resolve().parent
 INDEX = ROOT / "web" / "index.html"
 GITHUB_REPO = os.getenv("NEXORA_GITHUB_REPO", "zkwr1081-source/bongo-platform")
 GITHUB_API = "https://api.github.com"
+
+
+def is_loopback_bind(host: str) -> bool:
+    """Return True only for localhost or a literal loopback IP address."""
+    candidate = host.strip().lower()
+    if candidate == "localhost":
+        return True
+    try:
+        address = ipaddress.ip_address(candidate.split("%", 1)[0])
+    except ValueError:
+        return False
+    return address.is_loopback
+
+
+def execution_request_authorized(
+    authorization: str | None, token: str, host: str
+) -> bool:
+    """Allow unauthenticated execution only on a loopback-only bind."""
+    if not token:
+        return is_loopback_bind(host)
+    scheme, separator, supplied = (authorization or "").partition(" ")
+    return bool(
+        separator
+        and scheme.lower() == "bearer"
+        and hmac.compare_digest(
+            supplied.strip().encode("utf-8"), token.encode("utf-8")
+        )
+    )
+
+
+def validate_server_security(host: str, token: str) -> None:
+    """Fail closed when execution would be exposed without strong authentication."""
+    if is_loopback_bind(host):
+        return
+    if not token:
+        raise RuntimeError(
+            "Refusing non-loopback NEXORA_HOST without NEXORA_EXECUTION_TOKEN. "
+            "Bind to 127.0.0.1/::1 or configure a strong execution token."
+        )
+    if len(token.encode("utf-8")) < 32:
+        raise RuntimeError(
+            "NEXORA_EXECUTION_TOKEN must contain at least 32 UTF-8 bytes "
+            "for a non-loopback bind."
+        )
 
 
 def github_api_json(path: str) -> dict:
@@ -86,7 +132,9 @@ class NexoraHandler(BaseHTTPRequestHandler):
             self._json(404, {"error": "not_found"})
             return
         execution_token = os.getenv("NEXORA_EXECUTION_TOKEN", "").strip()
-        if execution_token and self.headers.get("Authorization") != f"Bearer {execution_token}":
+        if not execution_request_authorized(
+            self.headers.get("Authorization"), execution_token, HOST
+        ):
             self._json(401, {"error": "unauthorized"})
             return
         try:
@@ -95,7 +143,10 @@ class NexoraHandler(BaseHTTPRequestHandler):
                 self._json(413, {"error": "request_body_must_be_between_1_and_16384_bytes"})
                 return
             payload = json.loads(self.rfile.read(length).decode("utf-8"))
-            goal = payload.get("goal") if isinstance(payload, dict) else None
+            if not isinstance(payload, dict):
+                self._json(400, {"error": "request_body_must_be_a_json_object"})
+                return
+            goal = payload.get("goal")
             if not isinstance(goal, str) or not goal.strip() or len(goal) > 4000:
                 self._json(400, {"error": "goal_must_be_a_non_empty_string_up_to_4000_characters"})
                 return
@@ -193,6 +244,8 @@ class NexoraHandler(BaseHTTPRequestHandler):
 def main() -> None:
     if not 1 <= PORT <= 65535:
         raise ValueError("NEXORA_PORT must be between 1 and 65535")
+    execution_token = os.getenv("NEXORA_EXECUTION_TOKEN", "").strip()
+    validate_server_security(HOST, execution_token)
     server = ThreadingHTTPServer((HOST, PORT), NexoraHandler)
     print(f"NEXORA dashboard: http://127.0.0.1:{PORT}")
     print(f"NEXORA status:    http://127.0.0.1:{PORT}/api/status")
