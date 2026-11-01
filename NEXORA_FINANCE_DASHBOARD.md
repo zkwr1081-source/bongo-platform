@@ -18,7 +18,15 @@
 من مجلد المستودع:
 
 ~~~bash
-python -m pip install -r requirements.txt
+على Termux ثبّت الحزم الخفيفة المتوافقة مع Android:
+
+~~~bash
+python -m pip install -r requirements-termux.txt
+~~~
+
+على Linux أو خادم اعتيادي استخدم requirements.txt. ثم شغّل:
+
+~~~bash
 export NEXORA_DASHBOARD_HOST=127.0.0.1
 export NEXORA_DASHBOARD_PORT=8094
 python nexora_finance_dashboard.py
