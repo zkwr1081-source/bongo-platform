@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#07111f"><title>NEXORA Control Center</title>
+<style>
+:root{color-scheme:dark;--bg:#07111f;--panel:#0d1b2d;--line:#1d3550;--muted:#8da6bf;--text:#edf6ff;--cyan:#42d9f5;--green:#35d49a;--amber:#f4bd5b;--red:#ff7272}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 85% -15%,#123b58 0,transparent 42%),var(--bg);color:var(--text);font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1200px;margin:auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:24px}.brand{display:flex;gap:12px;align-items:center}.logo{width:48px;height:48px;border-radius:15px;background:linear-gradient(135deg,#13b9df,#5a6cff);display:grid;place-items:center;font-weight:900;font-size:22px;box-shadow:0 8px 30px #13b9df44}.eyebrow{color:var(--cyan);font-size:12px;letter-spacing:2px}.brand h1{margin:0;font-size:23px}.sub{color:var(--muted);font-size:13px}.pill{border:1px solid var(--line);padding:7px 12px;border-radius:99px;color:var(--amber);font-size:12px}.hero{border:1px solid #1d4964;background:linear-gradient(115deg,#102b42,#0c1b2c 65%);border-radius:22px;padding:24px;margin-bottom:18px}.hero h2{margin:0 0 8px;font-size:25px}.hero p{margin:0;color:var(--muted);max-width:720px}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:16px 0}.panel,.metric{background:linear-gradient(145deg,#102137,#0b1929);border:1px solid var(--line);border-radius:17px;padding:18px}.metric small{color:var(--muted)}.metric strong{display:block;font-size:25px;margin:9px 0 2px}.metric span{font-size:12px;color:var(--muted)}.section{display:grid;grid-template-columns:1.3fr 1fr;gap:14px}.panel h3{margin:0 0 14px;font-size:16px}.statusrow{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid #1a3046}.statusrow:last-child{border:0}.tag{font-size:12px;color:var(--amber)}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}button{border:1px solid #28506c;background:#12334b;color:var(--text);padding:10px 15px;border-radius:11px;font:inherit;cursor:pointer}button.primary{background:linear-gradient(90deg,#087ea4,#315bdc);border:0}button:disabled{opacity:.45;cursor:not-allowed}.log{font:12px/1.8 ui-monospace,monospace;color:#a8c4dc;white-space:pre-wrap;max-height:180px;overflow:auto;background:#071321;border-radius:10px;padding:12px}.foot{color:var(--muted);font-size:12px;text-align:center;padding:24px 0}.notice{padding:10px 12px;border-radius:10px;background:#2b2415;color:#f4d28e;font-size:12px;margin-top:12px}
+@media(max-width:850px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.section{grid-template-columns:1fr}}@media(max-width:480px){.wrap{padding:15px}.grid{gap:9px}.metric,.panel{padding:14px}.metric strong{font-size:21px}.hero{padding:19px}.hero h2{font-size:21px}}
+</style></head>
+<body><main class="wrap">
+<header class="top"><div class="brand"><div class="logo">N</div><div><div class="eyebrow">NEXORA OMEGA</div><h1>مركز التحكم</h1><div class="sub">لوحة المراقبة والإدارة المركزية</div></div></div><div class="pill" id="connection">● غير متصل بواجهة API</div></header>
+<section class="hero"><div class="eyebrow">CONTROL • OBSERVE • IMPROVE</div><h2>مرحباً بك في مركز NEXORA</h2><p>واجهة موحّدة لمراقبة خدمات المشروع ومؤشرات السوق. لا تنفّذ هذه اللوحة تداولاً أو تحويلات مالية؛ وتظهر البيانات الحية فقط عند ربط واجهة الخادم.</p><div class="actions"><button class="primary" id="check">اختبار اتصال الخادم</button><button id="refresh">تحديث البيانات</button><button id="docs">دليل التشغيل</button></div><div class="notice">وضع الواجهة: جاهزة للربط — لم يتم تأكيد تشغيل خدمة API بعد. أزرار التحكم التشغيلي ستظل غير مفعّلة حتى توفير نقاط API آمنة.</div></section>
+<section class="grid">
+<div class="metric"><small>حالة الخادم</small><strong id="server">غير متصل</strong><span>فحص /health</span></div>
+<div class="metric"><small>آخر قراءة للسوق</small><strong id="market">—</strong><span>من مصدر البيانات المتصل</span></div>
+<div class="metric"><small>تغيّر القيمة السوقية 24س</small><strong id="change">—</strong><span>رصد وصفي وليس تنبؤاً</span></div>
+<div class="metric"><small>آخر تحديث</small><strong id="updated">—</strong><span>وقت المتصفح المحلي</span></div>
+</section>
+<section class="section">
+<div class="panel"><h3>حالة المكوّنات</h3>
+<div class="statusrow"><span>مراقب السوق المالي</span><b class="tag">بانتظار API</b></div>
+<div class="statusrow"><span>قاعدة بيانات SQLite</span><b class="tag">محلي — غير مفحوص</b></div>
+<div class="statusrow"><span>محرك الوكلاء</span><b class="tag">غير موصول</b></div>
+<div class="statusrow"><span>التكاملات الخارجية</span><b class="tag">تحتاج إعداداً</b></div>
+<div class="statusrow"><span>التداول والتحويلات</span><b style="color:var(--green)">معطّلة في هذا النموذج</b></div>
+<div class="actions"><button disabled>تشغيل المراقب — يتطلب API</button><button disabled>إيقاف المراقب — يتطلب API</button></div></div>
+<div class="panel"><h3>سجل الفحوصات</h3><div class="log" id="log">[INIT] تم تحميل واجهة NEXORA.
+[SAFE MODE] لا توجد أوامر مالية أو عمليات نشر.
+[WAIT] اضغط «اختبار اتصال الخادم» للتحقق من /health.</div></div>
+</section><footer class="foot">NEXORA Control Center · واجهة مراقبة أولية · لا تعرض قيماً حقيقية قبل اتصال الخادم</footer>
+</main>
+<script>
+const $=id=>document.getElementById(id);function log(s){$('log').textContent+='\n'+new Date().toLocaleTimeString()+' '+s;$('log').scrollTop=$('log').scrollHeight}
+async function check(){ $('connection').textContent='● جارٍ فحص الخادم';try{const r=await fetch('/health',{headers:{Accept:'application/json'},cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();$('server').textContent='متصل';$('connection').textContent='● API متصل';$('connection').style.color='var(--green)';$('updated').textContent=new Date().toLocaleTimeString();log('[OK] /health '+JSON.stringify(d));return true}catch(e){$('server').textContent='غير متصل';$('connection').textContent='● غير متصل بواجهة API';$('connection').style.color='var(--amber)';log('[WARN] تعذّر الاتصال: '+e.message);return false}}
+async function refresh(){const ok=await check();if(!ok)return;try{const r=await fetch('/api/nexora/market/latest',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();$('market').textContent=d.total_market_cap_usd==null?'—':'$'+Number(d.total_market_cap_usd).toLocaleString();$('change').textContent=d.market_cap_change_24h_pct==null?'—':Number(d.market_cap_change_24h_pct).toFixed(2)+'%';$('updated').textContent=new Date().toLocaleTimeString();log('[OK] تم تحديث بيانات السوق')}catch(e){log('[INFO] نقطة بيانات السوق غير متاحة بعد: '+e.message)}}
+$('check').addEventListener('click',check);$('refresh').addEventListener('click',refresh);$('docs').addEventListener('click',()=>window.open('NEXORA_FINANCE_OBSERVER.md','_blank','noopener'));check();
+</script></body></html>
