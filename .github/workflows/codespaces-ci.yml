@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - "codex/codespaces-dev-environment"
+      - "fix/**"
   pull_request:
     branches:
       - main
@@ -36,8 +37,11 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt pytest
 
-      - name: Compile source
-        run: python -m compileall -q bongo nexora tests
+      - name: Compile NEXORA and application sources
+        run: >-
+          python -m compileall -q
+          gateway.py nexora_unified.py action_engine.py command_gateway.py
+          core bongo nexora tests
 
       - name: Run tests
         run: python -m pytest -q
