@@ -51,7 +51,7 @@ def test_loopback_bind_keeps_local_first_default():
 
 
 def test_non_loopback_bind_is_allowed_when_token_is_configured():
-    validate_server_security("0.0.0.0", "configured-token")
+    validate_server_security("0.0.0.0", "x" * 32)
 
 
 
