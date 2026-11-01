@@ -51,16 +51,25 @@ def execution_request_authorized(
     return bool(
         separator
         and scheme.lower() == "bearer"
-        and hmac.compare_digest(supplied.strip(), token)
+        and hmac.compare_digest(
+            supplied.strip().encode("utf-8"), token.encode("utf-8")
+        )
     )
 
 
 def validate_server_security(host: str, token: str) -> None:
-    """Fail closed when execution would be exposed without authentication."""
-    if not is_loopback_bind(host) and not token:
+    """Fail closed when execution would be exposed without strong authentication."""
+    if is_loopback_bind(host):
+        return
+    if not token:
         raise RuntimeError(
             "Refusing non-loopback NEXORA_HOST without NEXORA_EXECUTION_TOKEN. "
             "Bind to 127.0.0.1/::1 or configure a strong execution token."
+        )
+    if len(token.encode("utf-8")) < 32:
+        raise RuntimeError(
+            "NEXORA_EXECUTION_TOKEN must contain at least 32 UTF-8 bytes "
+            "for a non-loopback bind."
         )
 
 
