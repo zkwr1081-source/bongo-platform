@@ -1,0 +1,104 @@
+name: NEXORA Command Bridge
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: nexora-command-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  command:
+    if: >-
+      ${{ github.event.issue.number == 20 &&
+          github.event.issue.pull_request != null &&
+          contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
+          github.event.comment.user.type != 'Bot' &&
+          startsWith(github.event.comment.body, '!nexora ') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Execute NEXORA command
+        id: execute
+        env:
+          COMMAND_BODY: ${{ github.event.comment.body }}
+          NEXORA_BASE_URL: ${{ secrets.NEXORA_BASE_URL }}
+          NEXORA_API_KEY: ${{ secrets.NEXORA_API_KEY }}
+          NEXORA_MODEL: ${{ secrets.NEXORA_MODEL }}
+        run: |
+          python - <<'PY'
+          import asyncio, json, os
+          from nexora_agents import REGISTRY, run_batch
+          from nexora_model_adapter import model_handler, ModelConfigurationError
+
+          command = os.environ["COMMAND_BODY"].strip()
+          if command == "!nexora status":
+              configured = all(os.getenv(k, "").strip() for k in
+                  ("NEXORA_BASE_URL", "NEXORA_API_KEY", "NEXORA_MODEL"))
+              result = {
+                  "command": "status",
+                  "logical_agents": len(REGISTRY),
+                  "model_configured": configured,
+                  "execution": "not_started"
+              }
+          elif command == "!nexora agents":
+              result = {
+                  "command": "agents",
+                  "count": len(REGISTRY),
+                  "agents": [
+                      {"id": a.agent_id, "department": a.department, "specialty": a.specialty}
+                      for a in REGISTRY
+                  ]
+              }
+          elif command.startswith("!nexora run "):
+              goal = command[len("!nexora run "):].strip()
+              if not goal or len(goal) > 3000:
+                  raise SystemExit("Task must contain 1-3000 characters.")
+              if not all(os.getenv(k, "").strip() for k in
+                  ("NEXORA_BASE_URL", "NEXORA_API_KEY", "NEXORA_MODEL")):
+                  raise SystemExit("Missing Actions secrets: NEXORA_BASE_URL, NEXORA_API_KEY, NEXORA_MODEL.")
+              results = asyncio.run(run_batch(
+                  goal=goal,
+                  handler=model_handler,
+                  agent_ids=("NX-ORCHESTRATION-001", "NX-QUALITY-001"),
+                  concurrency=2,
+                  timeout_seconds=75,
+              ))
+              result = {"command": "run", "goal": goal, "results": results}
+          else:
+              raise SystemExit("Unknown command. Use !nexora status, !nexora agents, or !nexora run <task>.")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write("result=" + json.dumps(result, ensure_ascii=False) + "\n")
+          PY
+
+      - name: Publish execution result
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          COMMAND_RESULT: ${{ steps.execute.outputs.result }}
+        with:
+          script: |
+            const result = process.env.COMMAND_RESULT;
+            const body = result
+              ? "### NEXORA command result\\n\\n\x60\x60\x60json\\n" + JSON.stringify(JSON.parse(result), null, 2) + "\\n\x60\x60\x60"
+              : "### NEXORA command failed\\n\\nThe command did not complete. Check the Actions run logs for the exact error.";
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
