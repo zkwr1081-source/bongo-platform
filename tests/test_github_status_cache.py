@@ -10,6 +10,7 @@ def reset_cache(monkeypatch):
     monkeypatch.setattr(server, "_github_status_cache_at", 0.0)
     monkeypatch.setattr(server, "_github_status_refreshing", False)
     monkeypatch.setattr(server, "_github_status_refresh_error", None)
+    monkeypatch.setattr(server, "_github_status_retry_after", 0.0)
     monkeypatch.setattr(server, "_github_status_refresh_event", threading.Event())
     server._github_status_refresh_event.set()
 
@@ -75,7 +76,7 @@ def test_github_status_cache_uses_ttl_and_background_refresh(monkeypatch):
     assert len(calls) == 6
 
 
-def test_github_status_serves_stale_cache_when_upstream_fails(monkeypatch):
+def test_github_status_serves_stale_cache_and_backoffs_after_upstream_fails(monkeypatch):
     reset_cache(monkeypatch)
     clock = [100.0]
     monkeypatch.setattr(server, "time", SimpleNamespace(monotonic=lambda: clock[0]))
@@ -85,8 +86,10 @@ def test_github_status_serves_stale_cache_when_upstream_fails(monkeypatch):
     assert first["connected"] is True
 
     clock[0] += server.GITHUB_STATUS_CACHE_TTL_SECONDS + 1
+    attempts = []
 
     def unavailable(path):
+        attempts.append(path)
         raise urllib.error.URLError("offline")
 
     monkeypatch.setattr(server, "github_api_json", unavailable)
@@ -97,7 +100,19 @@ def test_github_status_serves_stale_cache_when_upstream_fails(monkeypatch):
 
     assert server._github_status_refresh_event.wait(timeout=2)
     assert server._github_status_refresh_error == "URLError"
+    assert len(attempts) == 1
 
+    clock[0] += 60
+    still_stale = server.github_status()
+    assert still_stale["connected"] is True
+    assert still_stale["stale"] is True
+    assert len(attempts) == 1
+
+    clock[0] += server.GITHUB_STATUS_REFRESH_ERROR_BACKOFF_SECONDS
+    retry = server.github_status()
+    assert retry["stale"] is True
+    assert server._github_status_refresh_event.wait(timeout=2)
+    assert len(attempts) == 2
 
 def test_github_status_marks_cache_expired_after_max_stale(monkeypatch):
     reset_cache(monkeypatch)

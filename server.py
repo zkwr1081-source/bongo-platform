@@ -30,10 +30,12 @@ GITHUB_API = "https://api.github.com"
 
 GITHUB_STATUS_CACHE_TTL_SECONDS = 300
 GITHUB_STATUS_MAX_STALE_SECONDS = 3600
+GITHUB_STATUS_REFRESH_ERROR_BACKOFF_SECONDS = 300
 _github_status_cache: dict | None = None
 _github_status_cache_at = 0.0
 _github_status_refreshing = False
 _github_status_refresh_error: str | None = None
+_github_status_retry_after = 0.0
 _github_status_cache_lock = threading.Lock()
 _github_status_refresh_event = threading.Event()
 _github_status_refresh_event.set()
@@ -91,12 +93,16 @@ def _refresh_github_status_cache() -> None:
     global _github_status_cache_at
     global _github_status_refreshing
     global _github_status_refresh_error
+    global _github_status_retry_after
 
     try:
         fresh = _fetch_github_status()
     except Exception as exc:
         with _github_status_cache_lock:
             _github_status_refresh_error = type(exc).__name__
+            _github_status_retry_after = (
+                time.monotonic() + GITHUB_STATUS_REFRESH_ERROR_BACKOFF_SECONDS
+            )
             _github_status_refreshing = False
             _github_status_refresh_event.set()
         return
@@ -105,6 +111,7 @@ def _refresh_github_status_cache() -> None:
         _github_status_cache = fresh
         _github_status_cache_at = time.monotonic()
         _github_status_refresh_error = None
+        _github_status_retry_after = 0.0
         _github_status_refreshing = False
         _github_status_refresh_event.set()
 
@@ -114,6 +121,11 @@ def _start_github_status_refresh_locked() -> None:
     global _github_status_refresh_error
 
     if _github_status_refreshing:
+        return
+    if (
+        _github_status_refresh_error
+        and time.monotonic() < _github_status_retry_after
+    ):
         return
     _github_status_refreshing = True
     _github_status_refresh_error = None
