@@ -3,6 +3,7 @@ import pytest
 from server import (
     execution_request_authorized,
     is_loopback_bind,
+    trusted_proxy_mode_enabled,
     validate_server_security,
 )
 
@@ -44,6 +45,38 @@ def test_bearer_scheme_is_case_insensitive_and_whitespace_is_trimmed():
 def test_non_loopback_bind_fails_closed_without_token():
     with pytest.raises(RuntimeError, match="NEXORA_EXECUTION_TOKEN"):
         validate_server_security("0.0.0.0", "")
+
+
+@pytest.mark.parametrize("value", ["1", "true", "TRUE", "yes", "on"])
+def test_trusted_proxy_mode_accepts_explicit_true_values(monkeypatch, value):
+    monkeypatch.setenv("NEXORA_TRUSTED_PROXY", value)
+    assert trusted_proxy_mode_enabled()
+
+
+@pytest.mark.parametrize("value", ["", "0", "false", "off", "no"])
+def test_trusted_proxy_mode_is_disabled_by_default_and_false_values(monkeypatch, value):
+    monkeypatch.setenv("NEXORA_TRUSTED_PROXY", value)
+    assert not trusted_proxy_mode_enabled()
+
+
+def test_loopback_reverse_proxy_requires_token_at_startup():
+    with pytest.raises(RuntimeError, match="reverse-proxy exposure"):
+        validate_server_security("127.0.0.1", "", trusted_proxy=True)
+
+
+def test_loopback_reverse_proxy_rejects_short_token():
+    with pytest.raises(RuntimeError, match="at least 32 UTF-8 bytes"):
+        validate_server_security("127.0.0.1", "short", trusted_proxy=True)
+
+
+def test_loopback_reverse_proxy_accepts_strong_token():
+    validate_server_security("127.0.0.1", "x" * 32, trusted_proxy=True)
+
+
+def test_loopback_reverse_proxy_never_allows_unauthenticated_request():
+    assert not execution_request_authorized(
+        None, "", "127.0.0.1", trusted_proxy=True
+    )
 
 
 def test_loopback_bind_keeps_local_first_default():

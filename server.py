@@ -41,12 +41,22 @@ def is_loopback_bind(host: str) -> bool:
     return address.is_loopback
 
 
+def trusted_proxy_mode_enabled() -> bool:
+    """Return whether a loopback listener is intentionally exposed through a proxy."""
+    return os.getenv("NEXORA_TRUSTED_PROXY", "").strip().lower() in {
+        "1", "true", "yes", "on"
+    }
+
+
 def execution_request_authorized(
-    authorization: str | None, token: str, host: str
+    authorization: str | None,
+    token: str,
+    host: str,
+    trusted_proxy: bool = False,
 ) -> bool:
-    """Allow unauthenticated execution only on a loopback-only bind."""
+    """Allow unauthenticated execution only for local, non-proxied operation."""
     if not token:
-        return is_loopback_bind(host)
+        return is_loopback_bind(host) and not trusted_proxy
     scheme, separator, supplied = (authorization or "").partition(" ")
     return bool(
         separator
@@ -57,19 +67,22 @@ def execution_request_authorized(
     )
 
 
-def validate_server_security(host: str, token: str) -> None:
-    """Fail closed when execution would be exposed without strong authentication."""
-    if is_loopback_bind(host):
+def validate_server_security(
+    host: str, token: str, trusted_proxy: bool = False
+) -> None:
+    """Fail closed for non-loopback binds and explicit reverse-proxy exposure."""
+    requires_authentication = not is_loopback_bind(host) or trusted_proxy
+    if not requires_authentication:
         return
     if not token:
         raise RuntimeError(
-            "Refusing non-loopback NEXORA_HOST without NEXORA_EXECUTION_TOKEN. "
-            "Bind to 127.0.0.1/::1 or configure a strong execution token."
+            "Refusing network or reverse-proxy exposure without NEXORA_EXECUTION_TOKEN. "
+            "Bind locally without a proxy or configure a strong execution token."
         )
     if len(token.encode("utf-8")) < 32:
         raise RuntimeError(
             "NEXORA_EXECUTION_TOKEN must contain at least 32 UTF-8 bytes "
-            "for a non-loopback bind."
+            "for network or reverse-proxy exposure."
         )
 
 
@@ -132,8 +145,12 @@ class NexoraHandler(BaseHTTPRequestHandler):
             self._json(404, {"error": "not_found"})
             return
         execution_token = os.getenv("NEXORA_EXECUTION_TOKEN", "").strip()
+        trusted_proxy = trusted_proxy_mode_enabled()
         if not execution_request_authorized(
-            self.headers.get("Authorization"), execution_token, HOST
+            self.headers.get("Authorization"),
+            execution_token,
+            HOST,
+            trusted_proxy=trusted_proxy,
         ):
             self._json(401, {"error": "unauthorized"})
             return
@@ -245,7 +262,9 @@ def main() -> None:
     if not 1 <= PORT <= 65535:
         raise ValueError("NEXORA_PORT must be between 1 and 65535")
     execution_token = os.getenv("NEXORA_EXECUTION_TOKEN", "").strip()
-    validate_server_security(HOST, execution_token)
+    validate_server_security(
+        HOST, execution_token, trusted_proxy=trusted_proxy_mode_enabled()
+    )
     server = ThreadingHTTPServer((HOST, PORT), NexoraHandler)
     print(f"NEXORA dashboard: http://127.0.0.1:{PORT}")
     print(f"NEXORA status:    http://127.0.0.1:{PORT}/api/status")

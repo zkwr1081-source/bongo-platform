@@ -5,6 +5,7 @@
 NEXORA's dashboard and agent execution server is intended for local-first operation.
 
 - The default bind address is `127.0.0.1`.
+- If a loopback listener is exposed through a reverse proxy, set `NEXORA_TRUSTED_PROXY=1`. This mode makes the execution token mandatory at startup and on the POST route even though the app binds to loopback; the proxy must still enforce HTTPS and ingress controls.
 - Unauthenticated agent execution is permitted only for loopback binds (`127.0.0.1`, `::1`, or `localhost`).
 - A non-loopback bind is rejected at startup unless `NEXORA_EXECUTION_TOKEN` is configured with at least 32 UTF-8 bytes. Generate a high-entropy value (for example, `secrets.token_urlsafe(48)`) and store it in a secret manager.
 - When the token is configured, every `POST /api/agents/run` request must include `Authorization: Bearer <token>`, including requests from localhost.
@@ -23,7 +24,7 @@ Keep the service on the same device. Do not forward port 8080 to an untrusted ne
 
 ## Network or reverse-proxy operation
 
-Before using a non-loopback bind:
+Before using a non-loopback bind or exposing a loopback listener through a reverse proxy, configure `NEXORA_EXECUTION_TOKEN`. For reverse-proxy exposure, also set `NEXORA_TRUSTED_PROXY=1` so the app enforces the token on loopback binds.
 
 1. Store a high-entropy `NEXORA_EXECUTION_TOKEN` in the host's secret manager or protected process environment.
 2. Use HTTPS at a trusted reverse proxy; do not expose the plain HTTP listener to the public Internet.
