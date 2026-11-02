@@ -1,6 +1,6 @@
 # NEXORA / BONGO — 20-Project Portfolio Roadmap
 
-**Reviewed:** 2026-11-02  
+**Reviewed:** 2026-11-03  
 **Operating strategy:** profit-first, sequential launches, one production candidate at a time.
 
 This is a portfolio inventory, not a claim that 20 products are already built. It separates code that exists from draft pull requests and concept cards so that commercial progress is measurable.
@@ -71,6 +71,18 @@ Every product must pass all applicable gates before a public release:
 - Clear terms, privacy, support, refunds, tax, and consumer-protection handling.
 - Payment eligibility and lawful processor authorization verified for the operating jurisdiction before checkout is enabled.
 - Revenue is reported only from independently reconciled provider receipts; code, subscriptions configured, or successful API responses are not revenue.
+
+
+
+## Validation snapshot — 2026-11-03
+
+The following evidence is from GitHub Actions and review branches; it does not imply merge, deployment, customer activity, or revenue.
+
+- **BONGO / NEXORA execution security:** PR #24 head `d1cacbba1f9e7fb93f26eefe554151c1b685e33c` passed Python CI (62 pytest tests) and Codespaces Development CI. [Python CI run 41526817076](https://github.com/zkwr1081-source/bongo-platform/actions/runs/41526817076) · [Codespaces CI run 41526817131](https://github.com/zkwr1081-source/bongo-platform/actions/runs/41526817131). It adds an explicit `NEXORA_TRUSTED_PROXY=1` guard for loopback reverse-proxy exposure. No hosted deployment was verified.
+- **AURA-BOT lead intake:** PR #6 head `8625306300014fe2b930bb27c72bb8b0d278cc3f` passed Python compile and 8 unit tests. [Workflow run 41526395851](https://github.com/zkwr1081-source/AURA-BOT/actions/runs/41526395851). It adds consent, 90-day default retention with configurable bounds, daily cleanup, and `/forget`. The Telegram token was not configured and no bot message was sent.
+- **Hyper-Agent Android:** PR #3 removes the embedded token value and adds pure-JVM parser/script tests. CI was still pending at the time of this snapshot after a compiler fix; the earlier run failed on an incorrect Moshi token-enum import. Do not mark Android acceptance complete until the latest Android CI and APK assembly pass.
+- **AURA commerce sequencing:** PR #4 (commerce MVP) and PR #6 (sales lead intake) both modify `main.py` from separate branches. If one lands first, the other must be updated/rebased and its CI rerun before merge.
+- **Commercial truth:** no verified public deployment, payment processor activation, customer receipt, or profit distribution was found. Checkout remains disabled in AURA and the Secure Rewards Portal.
 
 ## Current portfolio truth
 
