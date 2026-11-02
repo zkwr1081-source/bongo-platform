@@ -1,8 +1,16 @@
+import io
+import json
+import threading
+from unittest.mock import Mock, patch
+
 import pytest
 
+import server
 from server import (
+    create_agent_request_semaphore,
     execution_request_authorized,
     is_loopback_bind,
+    max_concurrent_agent_requests,
     trusted_proxy_mode_enabled,
     validate_server_security,
 )
@@ -102,3 +110,54 @@ def test_unicode_bearer_token_comparison_is_supported():
     assert execution_request_authorized(
         "Bearer " + token, token, "127.0.0.1"
     )
+
+
+@pytest.mark.parametrize("value", ["0", "9", "invalid"])
+def test_concurrent_agent_request_limit_rejects_unsafe_values(monkeypatch, value):
+    monkeypatch.setenv("NEXORA_MAX_CONCURRENT_AGENT_REQUESTS", value)
+    with pytest.raises(ValueError, match="NEXORA_MAX_CONCURRENT_AGENT_REQUESTS"):
+        max_concurrent_agent_requests()
+
+
+def test_concurrent_agent_request_limit_defaults_to_one(monkeypatch):
+    monkeypatch.delenv("NEXORA_MAX_CONCURRENT_AGENT_REQUESTS", raising=False)
+    assert max_concurrent_agent_requests() == 1
+
+
+def test_request_semaphore_enforces_configured_capacity(monkeypatch):
+    monkeypatch.setenv("NEXORA_MAX_CONCURRENT_AGENT_REQUESTS", "2")
+    semaphore = create_agent_request_semaphore()
+    assert semaphore.acquire(blocking=False)
+    assert semaphore.acquire(blocking=False)
+    assert not semaphore.acquire(blocking=False)
+    semaphore.release()
+    assert semaphore.acquire(blocking=False)
+    semaphore.release()
+    semaphore.release()
+
+
+def test_handler_returns_429_when_agent_request_capacity_is_full(monkeypatch):
+    semaphore = threading.BoundedSemaphore(1)
+    assert semaphore.acquire(blocking=False)
+    monkeypatch.setattr(server, "AGENT_REQUEST_SEMAPHORE", semaphore)
+    monkeypatch.setattr(server, "HOST", "127.0.0.1")
+    monkeypatch.setenv("NEXORA_EXECUTION_TOKEN", "")
+    monkeypatch.setattr(server, "trusted_proxy_mode_enabled", lambda: False)
+
+    handler = object.__new__(server.NexoraHandler)
+    handler.path = "/api/agents/run"
+    payload = json.dumps({"goal": "test capacity"}).encode("utf-8")
+    handler.headers = {"Content-Length": str(len(payload))}
+    handler.rfile = io.BytesIO(payload)
+    handler._json = Mock()
+
+    with patch("server.asyncio.run") as run:
+        handler.do_POST()
+
+    handler._json.assert_called_once_with(
+        429,
+        {"error": "execution_capacity_reached", "retry_after_seconds": 5},
+        headers={"Retry-After": "5"},
+    )
+    run.assert_not_called()
+    semaphore.release()
