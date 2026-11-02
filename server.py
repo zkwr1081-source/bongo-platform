@@ -10,6 +10,8 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import threading
+import time
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -26,6 +28,16 @@ INDEX = ROOT / "web" / "index.html"
 GITHUB_REPO = os.getenv("NEXORA_GITHUB_REPO", "zkwr1081-source/bongo-platform")
 GITHUB_API = "https://api.github.com"
 
+GITHUB_STATUS_CACHE_TTL_SECONDS = 300
+GITHUB_STATUS_MAX_STALE_SECONDS = 3600
+_github_status_cache: dict | None = None
+_github_status_cache_at = 0.0
+_github_status_refreshing = False
+_github_status_refresh_error: str | None = None
+_github_status_cache_lock = threading.Lock()
+_github_status_refresh_event = threading.Event()
+_github_status_refresh_event.set()
+
 
 def github_api_json(path: str) -> dict:
     request = urllib.request.Request(
@@ -37,7 +49,7 @@ def github_api_json(path: str) -> dict:
         return json.loads(response.read().decode("utf-8"))
 
 
-def github_status() -> dict:
+def _fetch_github_status() -> dict:
     owner, name = GITHUB_REPO.split("/", 1)
     prefix = f"/repos/{owner}/{name}"
     repository = github_api_json(prefix)
@@ -55,11 +67,105 @@ def github_status() -> dict:
         "html_url": repository["html_url"],
         "visibility": repository["visibility"],
         "default_branch": repository["default_branch"],
-        "latest_commit": {"sha": commit["sha"], "short_sha": commit["sha"][:7], "message": commit["commit"]["message"].splitlines()[0], "html_url": commit["html_url"]},
-        "latest_workflow": ({"name": latest_run.get("name"), "status": latest_run.get("status"), "conclusion": latest_run.get("conclusion"), "html_url": latest_run.get("html_url")} if latest_run else None),
+        "latest_commit": {
+            "sha": commit["sha"],
+            "short_sha": commit["sha"][:7],
+            "message": commit["commit"]["message"].splitlines()[0],
+            "html_url": commit["html_url"],
+        },
+        "latest_workflow": (
+            {
+                "name": latest_run.get("name"),
+                "status": latest_run.get("status"),
+                "conclusion": latest_run.get("conclusion"),
+                "html_url": latest_run.get("html_url"),
+            }
+            if latest_run else None
+        ),
         "source": "GitHub REST API",
     }
 
+
+def _refresh_github_status_cache() -> None:
+    global _github_status_cache
+    global _github_status_cache_at
+    global _github_status_refreshing
+    global _github_status_refresh_error
+
+    try:
+        fresh = _fetch_github_status()
+    except Exception as exc:
+        with _github_status_cache_lock:
+            _github_status_refresh_error = type(exc).__name__
+            _github_status_refreshing = False
+            _github_status_refresh_event.set()
+        return
+
+    with _github_status_cache_lock:
+        _github_status_cache = fresh
+        _github_status_cache_at = time.monotonic()
+        _github_status_refresh_error = None
+        _github_status_refreshing = False
+        _github_status_refresh_event.set()
+
+
+def _start_github_status_refresh_locked() -> None:
+    global _github_status_refreshing
+    global _github_status_refresh_error
+
+    if _github_status_refreshing:
+        return
+    _github_status_refreshing = True
+    _github_status_refresh_error = None
+    _github_status_refresh_event.clear()
+    threading.Thread(
+        target=_refresh_github_status_cache,
+        name="nexora-github-status-refresh",
+        daemon=True,
+    ).start()
+
+
+def github_status() -> dict:
+    """Serve a shared 5-minute cache and refresh stale data asynchronously."""
+    with _github_status_cache_lock:
+        cache = _github_status_cache
+        cache_age = time.monotonic() - _github_status_cache_at
+
+        if cache is not None and cache_age < GITHUB_STATUS_CACHE_TTL_SECONDS:
+            return {**cache, "cached": True, "stale": False}
+
+        if cache is not None:
+            _start_github_status_refresh_locked()
+            if cache_age <= GITHUB_STATUS_MAX_STALE_SECONDS:
+                return {**cache, "cached": True, "stale": True}
+            return {
+                "connected": False,
+                "repository": cache.get("repository"),
+                "html_url": cache.get("html_url"),
+                "visibility": cache.get("visibility"),
+                "default_branch": cache.get("default_branch"),
+                "latest_commit": None,
+                "latest_workflow": None,
+                "source": "GitHub REST API",
+                "cached": True,
+                "stale": True,
+                "error": "cache_expired",
+            }
+
+        _start_github_status_refresh_locked()
+
+    completed = _github_status_refresh_event.wait(timeout=30)
+    with _github_status_cache_lock:
+        cache = _github_status_cache
+        refresh_error = _github_status_refresh_error
+
+    if cache is None:
+        if not completed:
+            raise TimeoutError("GitHub status refresh timed out")
+        raise RuntimeError(
+            f"GitHub status unavailable ({refresh_error or 'refresh_failed'})"
+        )
+    return {**cache, "cached": False, "stale": False}
 
 class NexoraHandler(BaseHTTPRequestHandler):
     server_version = "NEXORA/1.0"
@@ -137,8 +243,8 @@ class NexoraHandler(BaseHTTPRequestHandler):
         if path == "/api/github":
             try:
                 self._json(200, github_status())
-            except (urllib.error.URLError, TimeoutError, ValueError, KeyError) as exc:
-                self._json(502, {"connected": False, "error": str(exc)[:240]})
+            except (urllib.error.URLError, TimeoutError, ValueError, KeyError, RuntimeError) as exc:
+                self._json(502, {"connected": False, "error": type(exc).__name__})
             return
 
         if path == "/github-status.js":
