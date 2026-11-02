@@ -10,6 +10,7 @@ NEXORA's dashboard and agent execution server is intended for local-first operat
 - A non-loopback bind is rejected at startup unless `NEXORA_EXECUTION_TOKEN` is configured with at least 32 UTF-8 bytes. Generate a high-entropy value (for example, `secrets.token_urlsafe(48)`) and store it in a secret manager.
 - When the token is configured, every `POST /api/agents/run` request must include `Authorization: Bearer <token>`, including requests from localhost.
 - Token comparison uses a constant-time comparison. The application does not write the token to its request logs.
+- Agent-run request batches are limited to one concurrent batch by default; configure `NEXORA_MAX_CONCURRENT_AGENT_REQUESTS` from 1 to 8. Requests arriving when capacity is full receive HTTP 429 and `Retry-After: 5`. The per-request agent fan-out remains separately bounded by the request's validated concurrency field (1–10).
 - The browser dashboard provides a password field for the execution token. The value stays in page memory, is sent only as a same-origin Bearer header, and is not written to localStorage. Reloading the page clears the field.
 
 ## Safe local operation
@@ -28,7 +29,7 @@ Before using a non-loopback bind or exposing a loopback listener through a rever
 
 1. Store a high-entropy `NEXORA_EXECUTION_TOKEN` in the host's secret manager or protected process environment.
 2. Use HTTPS at a trusted reverse proxy; do not expose the plain HTTP listener to the public Internet.
-3. Restrict network ingress to trusted clients and configure request-rate and connection limits at the proxy.
+3. Restrict network ingress to trusted clients and configure request-rate and connection limits at the proxy. The application also applies a process-wide concurrent-batch limit; this is a capacity guard, not a substitute for ingress rate limiting.
 4. Ensure clients send the Bearer token over TLS. Do not place it in URLs, browser local storage, source code, logs, or issue reports.
 5. Rotate the token immediately if it may have been exposed.
 
