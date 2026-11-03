@@ -95,6 +95,18 @@ def list_projects(db_path: str | Path = DEFAULT_DB) -> list[dict[str, Any]]:
         return [_project(row) for row in rows]
 
 
+def update_project_stage(project_id: int, stage: str, db_path: str | Path = DEFAULT_DB) -> dict[str, Any]:
+    stage = stage.strip().lower()
+    if stage not in STAGES:
+        raise ValueError(f"stage must be one of: {', '.join(sorted(STAGES))}")
+    with _connect(db_path) as conn:
+        cur = conn.execute("UPDATE projects SET stage=? WHERE id=?", (stage, project_id))
+        if cur.rowcount == 0:
+            raise ValueError("project_id does not exist")
+        row = conn.execute("SELECT * FROM projects WHERE id=?", (project_id,)).fetchone()
+        return _project(row)
+
+
 def add_transaction(project_id: int, kind: str, amount_minor: int, currency: str,
                     status: str = "collected", source: str = "",
                     transaction_date: str | None = None,
@@ -157,6 +169,11 @@ def dashboard(db_path: str | Path = DEFAULT_DB) -> dict[str, Any]:
                  "collected_records": row["collected_records"]}
                 for row in collected
             ],
-            "pending_by_currency": [dict(row) for row in pending],
+            "pending_by_currency": [
+                {"currency": row["currency"],
+                 "pending_income_minor": row["pending_income_minor"] or 0,
+                 "pending_expense_minor": row["pending_expense_minor"] or 0}
+                for row in pending
+            ],
             "revenue_definition": "Collected income only; pending items are excluded. Values are minor units and currencies are never combined.",
         }
