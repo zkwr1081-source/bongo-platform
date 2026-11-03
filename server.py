@@ -8,8 +8,11 @@ Status:    http://127.0.0.1:8080/api/status
 from __future__ import annotations
 
 import asyncio
+import hmac
+import ipaddress
 import json
 import os
+import threading
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -25,6 +28,91 @@ ROOT = Path(__file__).resolve().parent
 INDEX = ROOT / "web" / "index.html"
 GITHUB_REPO = os.getenv("NEXORA_GITHUB_REPO", "zkwr1081-source/bongo-platform")
 GITHUB_API = "https://api.github.com"
+
+DEFAULT_MAX_CONCURRENT_AGENT_REQUESTS = 1
+MAX_CONCURRENT_AGENT_REQUESTS = 8
+
+
+def max_concurrent_agent_requests() -> int:
+    """Return the validated process-wide limit for simultaneous agent batches."""
+    raw = os.getenv("NEXORA_MAX_CONCURRENT_AGENT_REQUESTS", "").strip()
+    if not raw:
+        raw = str(DEFAULT_MAX_CONCURRENT_AGENT_REQUESTS)
+    try:
+        limit = int(raw)
+    except ValueError as exc:
+        raise ValueError(
+            "NEXORA_MAX_CONCURRENT_AGENT_REQUESTS must be an integer"
+        ) from exc
+    if not 1 <= limit <= MAX_CONCURRENT_AGENT_REQUESTS:
+        raise ValueError(
+            "NEXORA_MAX_CONCURRENT_AGENT_REQUESTS must be between 1 and 8"
+        )
+    return limit
+
+
+def create_agent_request_semaphore() -> threading.BoundedSemaphore:
+    return threading.BoundedSemaphore(max_concurrent_agent_requests())
+
+
+AGENT_REQUEST_SEMAPHORE = create_agent_request_semaphore()
+
+
+def is_loopback_bind(host: str) -> bool:
+    """Return True only for localhost or a literal loopback IP address."""
+    candidate = host.strip().lower()
+    if candidate == "localhost":
+        return True
+    try:
+        address = ipaddress.ip_address(candidate.split("%", 1)[0])
+    except ValueError:
+        return False
+    return address.is_loopback
+
+
+def trusted_proxy_mode_enabled() -> bool:
+    """Return whether a loopback listener is intentionally exposed through a proxy."""
+    return os.getenv("NEXORA_TRUSTED_PROXY", "").strip().lower() in {
+        "1", "true", "yes", "on"
+    }
+
+
+def execution_request_authorized(
+    authorization: str | None,
+    token: str,
+    host: str,
+    trusted_proxy: bool = False,
+) -> bool:
+    """Allow unauthenticated execution only for local, non-proxied operation."""
+    if not token:
+        return is_loopback_bind(host) and not trusted_proxy
+    scheme, separator, supplied = (authorization or "").partition(" ")
+    return bool(
+        separator
+        and scheme.lower() == "bearer"
+        and hmac.compare_digest(
+            supplied.strip().encode("utf-8"), token.encode("utf-8")
+        )
+    )
+
+
+def validate_server_security(
+    host: str, token: str, trusted_proxy: bool = False
+) -> None:
+    """Fail closed for non-loopback binds and explicit reverse-proxy exposure."""
+    requires_authentication = not is_loopback_bind(host) or trusted_proxy
+    if not requires_authentication:
+        return
+    if not token:
+        raise RuntimeError(
+            "Refusing network or reverse-proxy exposure without NEXORA_EXECUTION_TOKEN. "
+            "Bind locally without a proxy or configure a strong execution token."
+        )
+    if len(token.encode("utf-8")) < 32:
+        raise RuntimeError(
+            "NEXORA_EXECUTION_TOKEN must contain at least 32 UTF-8 bytes "
+            "for network or reverse-proxy exposure."
+        )
 
 
 def github_api_json(path: str) -> dict:
@@ -64,7 +152,13 @@ def github_status() -> dict:
 class NexoraHandler(BaseHTTPRequestHandler):
     server_version = "NEXORA/1.0"
 
-    def _send(self, status: int, body: bytes, content_type: str) -> None:
+    def _send(
+        self,
+        status: int,
+        body: bytes,
+        content_type: str,
+        headers: dict[str, str] | None = None,
+    ) -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
@@ -72,12 +166,24 @@ class NexoraHandler(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("X-Frame-Options", "DENY")
+        for name, value in (headers or {}).items():
+            self.send_header(name, value)
         self.end_headers()
         self.wfile.write(body)
 
-    def _json(self, status: int, payload: dict) -> None:
+    def _json(
+        self,
+        status: int,
+        payload: dict,
+        headers: dict[str, str] | None = None,
+    ) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        self._send(status, body, "application/json; charset=utf-8")
+        self._send(
+            status,
+            body,
+            "application/json; charset=utf-8",
+            headers=headers,
+        )
 
 
     def do_POST(self) -> None:
@@ -86,16 +192,26 @@ class NexoraHandler(BaseHTTPRequestHandler):
             self._json(404, {"error": "not_found"})
             return
         execution_token = os.getenv("NEXORA_EXECUTION_TOKEN", "").strip()
-        if execution_token and self.headers.get("Authorization") != f"Bearer {execution_token}":
+        trusted_proxy = trusted_proxy_mode_enabled()
+        if not execution_request_authorized(
+            self.headers.get("Authorization"),
+            execution_token,
+            HOST,
+            trusted_proxy=trusted_proxy,
+        ):
             self._json(401, {"error": "unauthorized"})
             return
+        acquired = False
         try:
             length = int(self.headers.get("Content-Length", "0"))
             if length < 1 or length > 16384:
                 self._json(413, {"error": "request_body_must_be_between_1_and_16384_bytes"})
                 return
             payload = json.loads(self.rfile.read(length).decode("utf-8"))
-            goal = payload.get("goal") if isinstance(payload, dict) else None
+            if not isinstance(payload, dict):
+                self._json(400, {"error": "request_body_must_be_a_json_object"})
+                return
+            goal = payload.get("goal")
             if not isinstance(goal, str) or not goal.strip() or len(goal) > 4000:
                 self._json(400, {"error": "goal_must_be_a_non_empty_string_up_to_4000_characters"})
                 return
@@ -109,6 +225,17 @@ class NexoraHandler(BaseHTTPRequestHandler):
             if not isinstance(concurrency, int) or isinstance(concurrency, bool) or not 1 <= concurrency <= 10:
                 self._json(400, {"error": "concurrency_must_be_between_1_and_10"})
                 return
+            if not AGENT_REQUEST_SEMAPHORE.acquire(blocking=False):
+                self._json(
+                    429,
+                    {
+                        "error": "execution_capacity_reached",
+                        "retry_after_seconds": 5,
+                    },
+                    headers={"Retry-After": "5"},
+                )
+                return
+            acquired = True
             results = asyncio.run(run_batch(
                 goal=goal.strip(), handler=model_handler, agent_ids=raw_ids,
                 concurrency=concurrency, timeout_seconds=75,
@@ -120,6 +247,9 @@ class NexoraHandler(BaseHTTPRequestHandler):
             self._json(400, {"error": "invalid_request", "detail": str(exc)[:200]})
         except Exception as exc:
             self._json(500, {"error": "execution_failed", "detail": type(exc).__name__})
+        finally:
+            if acquired:
+                AGENT_REQUEST_SEMAPHORE.release()
 
     def do_GET(self) -> None:
         path = urlparse(self.path).path
@@ -191,8 +321,14 @@ class NexoraHandler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
+    global AGENT_REQUEST_SEMAPHORE
     if not 1 <= PORT <= 65535:
         raise ValueError("NEXORA_PORT must be between 1 and 65535")
+    AGENT_REQUEST_SEMAPHORE = create_agent_request_semaphore()
+    execution_token = os.getenv("NEXORA_EXECUTION_TOKEN", "").strip()
+    validate_server_security(
+        HOST, execution_token, trusted_proxy=trusted_proxy_mode_enabled()
+    )
     server = ThreadingHTTPServer((HOST, PORT), NexoraHandler)
     print(f"NEXORA dashboard: http://127.0.0.1:{PORT}")
     print(f"NEXORA status:    http://127.0.0.1:{PORT}/api/status")
