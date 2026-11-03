@@ -57,7 +57,7 @@ The order below optimizes for a narrow first release and short feedback loops. I
 
 ## Portfolio hygiene: repositories not counted as independent products
 
-The accessible profile currently contains nine repositories. Three are upstream forks (Qwen Audio Agent, Etherscan Skills, and Expo) and should not be counted as original products without substantial differentiated work and license review. The private `app-mall` repository currently contains only repository metadata files; public `BONGO` is empty; private `NEXORA-Terminal` contains a README/license shell rather than a terminal implementation. These are backlog assets, not launch-ready projects.
+The accessible profile currently contains nine repositories. Three are upstream forks (Qwen Audio Agent, Etherscan Skills, and Expo) and should not be counted as original products without substantial differentiated work and license review. The private `app-mall` repository currently contains only `.gitignore` and `LICENSE`; public `BONGO` is empty; private `NEXORA-Terminal` contains only `.gitignore`, `LICENSE`, and a README whose content is about Etherscan agent skills. Its GitHub description duplicates the `skills` repository description, so no terminal implementation is verified. These are backlog assets, not launch-ready projects.
 
 ## Non-negotiable release gates
 
