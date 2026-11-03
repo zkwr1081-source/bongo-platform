@@ -18,6 +18,7 @@ from urllib.parse import urlparse
 
 from nexora_agents import REGISTRY, registry_summary, run_batch
 from nexora_model_adapter import ModelConfigurationError, model_handler
+from nexora_connector_registry import list_connectors
 
 HOST = os.getenv("NEXORA_HOST", "127.0.0.1")
 PORT = int(os.getenv("NEXORA_PORT", "8080"))
@@ -133,6 +134,10 @@ class NexoraHandler(BaseHTTPRequestHandler):
             self._json(200, {"ok": True, "service": "nexora-web"})
             return
 
+
+        if path == "/api/connectors":
+            self._json(200, list_connectors())
+            return
 
         if path == "/api/github":
             try:
