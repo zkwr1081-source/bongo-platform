@@ -7,8 +7,8 @@ A first verifiable module for managing a digital-project portfolio and tracking 
 - Project portfolio with stages: idea, validation, build, launch, operating, paused, archived.
 - Cash ledger for income and expenses, with pending/collected/void statuses.
 - Dashboard totals grouped by currency; no cross-currency addition.
-- Money stored as integer minor units (e.g. 1250 = $12.50 when currency is USD).
-- API key authentication on all business-data routes, with a 32-character minimum configured secret.
+- Money stored as positive signed 64-bit integer minor units (e.g. 1250 = $12.50 when currency is USD); values outside SQLite's integer range are rejected.
+- API key authentication on all business-data routes, with a 32-UTF-8-byte minimum configured secret.
 - Health endpoint intentionally exposes only service status.
 
 ## Run in Termux / Python
