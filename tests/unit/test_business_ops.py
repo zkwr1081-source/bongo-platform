@@ -53,3 +53,13 @@ def test_invalid_currency_and_amount_rejected(db):
 def test_missing_project_is_rejected(db):
     with pytest.raises(ValueError, match="does not exist"):
         store.add_transaction(999, "income", 100, "USD", db_path=db)
+
+
+def test_project_stage_can_advance_and_invalid_stage_is_rejected(db):
+    project = store.create_project("Stage workflow", db_path=db)
+    updated = store.update_project_stage(project["id"], "validation", db_path=db)
+    assert updated["stage"] == "validation"
+    with pytest.raises(ValueError, match="stage must be one of"):
+        store.update_project_stage(project["id"], "unknown", db_path=db)
+    with pytest.raises(ValueError, match="does not exist"):
+        store.update_project_stage(999, "build", db_path=db)
