@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import pytest
+from fastapi import HTTPException
+from pydantic import ValidationError
 
-from business_ops import store
+from business_ops import api, store
 
 
 @pytest.fixture
@@ -46,7 +48,7 @@ def test_invalid_currency_and_amount_rejected(db):
     project = store.create_project("Project", db_path=db)
     with pytest.raises(ValueError, match="currency"):
         store.add_transaction(project["id"], "income", 100, "US", db_path=db)
-    with pytest.raises(ValueError, match="positive integer"):
+    with pytest.raises(ValueError, match="positive integer|SQLite 64-bit"):
         store.add_transaction(project["id"], "income", 0, "USD", db_path=db)
 
 
@@ -63,3 +65,52 @@ def test_project_stage_can_advance_and_invalid_stage_is_rejected(db):
         store.update_project_stage(project["id"], "unknown", db_path=db)
     with pytest.raises(ValueError, match="does not exist"):
         store.update_project_stage(999, "build", db_path=db)
+
+
+def test_api_key_configuration_must_be_at_least_32_utf8_bytes(monkeypatch):
+    for configured in ("", "short", "a" * 31):
+        monkeypatch.setenv("NEXORA_BUSINESS_API_KEY", configured)
+        with pytest.raises(HTTPException) as exc:
+            api.require_api_key("any")
+        assert exc.value.status_code == 503
+
+
+def test_api_key_missing_or_mismatch_is_rejected(monkeypatch):
+    secret = "x" * 32
+    monkeypatch.setenv("NEXORA_BUSINESS_API_KEY", secret)
+    with pytest.raises(HTTPException) as missing:
+        api.require_api_key(None)
+    assert missing.value.status_code == 401
+    with pytest.raises(HTTPException) as mismatch:
+        api.require_api_key("y" * 32)
+    assert mismatch.value.status_code == 401
+
+
+def test_api_key_match_is_accepted_and_unicode_secret_is_supported(monkeypatch):
+    secret = "x" * 32
+    monkeypatch.setenv("NEXORA_BUSINESS_API_KEY", secret)
+    assert api.require_api_key(secret) is None
+
+    unicode_secret = "é" * 16  # exactly 32 UTF-8 bytes
+    monkeypatch.setenv("NEXORA_BUSINESS_API_KEY", unicode_secret)
+    assert api.require_api_key(unicode_secret) is None
+
+
+def test_api_model_rejects_bool_and_out_of_range_sqlite_integers():
+    base = {"kind": "income", "currency": "USD"}
+    with pytest.raises(ValidationError):
+        api.TransactionInput(project_id=True, amount_minor=100, **base)
+    with pytest.raises(ValidationError):
+        api.TransactionInput(project_id=1, amount_minor=store.MAX_SQLITE_INTEGER + 1, **base)
+    with pytest.raises(ValidationError):
+        api.TransactionInput(project_id=store.MAX_SQLITE_INTEGER + 1, amount_minor=100, **base)
+
+
+def test_store_rejects_out_of_range_sqlite_integer_inputs(db):
+    project = store.create_project("Integer bounds", db_path=db)
+    with pytest.raises(ValueError, match="SQLite 64-bit"):
+        store.add_transaction(project["id"], "income", store.MAX_SQLITE_INTEGER + 1, "USD", db_path=db)
+    with pytest.raises(ValueError, match="SQLite 64-bit"):
+        store.add_transaction(store.MAX_SQLITE_INTEGER + 1, "income", 100, "USD", db_path=db)
+    with pytest.raises(ValueError, match="SQLite 64-bit"):
+        store.update_project_stage(store.MAX_SQLITE_INTEGER + 1, "build", db_path=db)
