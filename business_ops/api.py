@@ -27,9 +27,9 @@ class ProjectStageInput(BaseModel):
 
 
 class TransactionInput(BaseModel):
-    project_id: int = Field(gt=0)
+    project_id: int = Field(gt=0, le=store.MAX_SQLITE_INTEGER, strict=True)
     kind: Literal["income", "expense"]
-    amount_minor: int = Field(gt=0)
+    amount_minor: int = Field(gt=0, le=store.MAX_SQLITE_INTEGER, strict=True)
     currency: str = Field(min_length=3, max_length=3)
     status: Literal["pending", "collected", "void"] = "collected"
     source: str = Field(default="", max_length=160)
@@ -38,10 +38,13 @@ class TransactionInput(BaseModel):
 
 def require_api_key(x_api_key: str | None = Header(default=None)) -> None:
     configured = os.environ.get("NEXORA_BUSINESS_API_KEY", "")
-    if len(configured) < 32:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                            detail="API key is not configured; set NEXORA_BUSINESS_API_KEY to a secret of at least 32 characters.")
-    if not x_api_key or not secrets.compare_digest(x_api_key, configured):
+    configured_bytes = configured.encode("utf-8")
+    if len(configured_bytes) < 32:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="API key is not configured; set NEXORA_BUSINESS_API_KEY to a secret of at least 32 UTF-8 bytes.",
+        )
+    if x_api_key is None or not secrets.compare_digest(x_api_key.encode("utf-8"), configured_bytes):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
 
 
