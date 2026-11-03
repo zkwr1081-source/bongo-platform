@@ -22,6 +22,10 @@ class ProjectInput(BaseModel):
     stage: Literal["idea", "validation", "build", "launch", "operating", "paused", "archived"] = "idea"
 
 
+class ProjectStageInput(BaseModel):
+    stage: Literal["idea", "validation", "build", "launch", "operating", "paused", "archived"]
+
+
 class TransactionInput(BaseModel):
     project_id: int = Field(gt=0)
     kind: Literal["income", "expense"]
@@ -75,6 +79,14 @@ def create_project(payload: ProjectInput) -> dict:
         if "UNIQUE constraint failed" in str(exc):
             raise HTTPException(status_code=409, detail="Project name already exists") from exc
         raise
+
+
+@app.patch("/api/projects/{project_id}/stage", dependencies=[Depends(require_api_key)])
+def update_project_stage(project_id: int, payload: ProjectStageInput) -> dict:
+    try:
+        return store.update_project_stage(project_id, payload.stage)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/api/transactions", status_code=201, dependencies=[Depends(require_api_key)])
