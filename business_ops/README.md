@@ -28,8 +28,9 @@ Keep the API bound to localhost unless a protected reverse proxy and network pol
 
 - `GET /health` — unauthenticated liveness only.
 - `GET /api/projects` — list projects.
-- `POST /api/projects` — create a project; body: `{"name":"AI Support SaaS","category":"saas","stage":"idea"}
-- `POST /api/transactions` — record income or expense; body: `{"project_id":1,"kind":"income","amount_minor":12500,"currency":"USD","status":"collected","source":"pilot"}
+- `POST /api/projects` — create a project; body: `{"name":"AI Support SaaS","category":"saas","stage":"idea"}`
+- `PATCH /api/projects/{project_id}/stage` — advance or pause a project; body: `{"stage":"validation"}`
+- `POST /api/transactions` — record income or expense; body: `{"project_id":1,"kind":"income","amount_minor":12500,"currency":"USD","status":"collected","source":"pilot"}`
 - `GET /api/dashboard` — cash metrics, grouped by currency.
 
 For all `/api/*` routes send `X-API-Key: <NEXORA_BUSINESS_API_KEY>`.
