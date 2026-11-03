@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
@@ -114,3 +116,21 @@ def test_store_rejects_out_of_range_sqlite_integer_inputs(db):
         store.add_transaction(store.MAX_SQLITE_INTEGER + 1, "income", 100, "USD", db_path=db)
     with pytest.raises(ValueError, match="SQLite 64-bit"):
         store.update_project_stage(store.MAX_SQLITE_INTEGER + 1, "build", db_path=db)
+
+
+
+def test_app_lifespan_initializes_store_once(monkeypatch):
+    calls = 0
+
+    def fake_init_db():
+        nonlocal calls
+        calls += 1
+
+    monkeypatch.setattr(api.store, "init_db", fake_init_db)
+
+    async def exercise_lifespan():
+        async with api.lifespan(api.app):
+            assert calls == 1
+        assert calls == 1
+
+    asyncio.run(exercise_lifespan())
