@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_DB = os.environ.get("NEXORA_BUSINESS_DB", "nexora_business.db")
+MAX_SQLITE_INTEGER = (1 << 63) - 1
 CURRENCIES = re.compile(r"^[A-Z]{3}$")
 STAGES = {"idea", "validation", "build", "launch", "operating", "paused", "archived"}
 TX_STATUSES = {"pending", "collected", "void"}
@@ -96,6 +97,8 @@ def list_projects(db_path: str | Path = DEFAULT_DB) -> list[dict[str, Any]]:
 
 
 def update_project_stage(project_id: int, stage: str, db_path: str | Path = DEFAULT_DB) -> dict[str, Any]:
+    if isinstance(project_id, bool) or not isinstance(project_id, int) or not 0 < project_id <= MAX_SQLITE_INTEGER:
+        raise ValueError("project_id must be a positive SQLite 64-bit integer")
     stage = stage.strip().lower()
     if stage not in STAGES:
         raise ValueError(f"stage must be one of: {', '.join(sorted(STAGES))}")
@@ -113,12 +116,14 @@ def add_transaction(project_id: int, kind: str, amount_minor: int, currency: str
                     db_path: str | Path = DEFAULT_DB) -> dict[str, Any]:
     kind, status, currency = kind.strip().lower(), status.strip().lower(), currency.strip().upper()
     source = source.strip()
+    if isinstance(project_id, bool) or not isinstance(project_id, int) or not 0 < project_id <= MAX_SQLITE_INTEGER:
+        raise ValueError("project_id must be a positive SQLite 64-bit integer")
     if kind not in {"income", "expense"}:
         raise ValueError("kind must be income or expense")
     if status not in TX_STATUSES:
         raise ValueError(f"status must be one of: {', '.join(sorted(TX_STATUSES))}")
-    if isinstance(amount_minor, bool) or not isinstance(amount_minor, int) or amount_minor <= 0:
-        raise ValueError("amount_minor must be a positive integer")
+    if isinstance(amount_minor, bool) or not isinstance(amount_minor, int) or not 0 < amount_minor <= MAX_SQLITE_INTEGER:
+        raise ValueError("amount_minor must be a positive SQLite 64-bit integer")
     if not CURRENCIES.fullmatch(currency):
         raise ValueError("currency must be a 3-letter uppercase currency code")
     if len(source) > 160:
