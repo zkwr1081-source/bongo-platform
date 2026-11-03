@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import os
 import secrets
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
@@ -12,7 +14,14 @@ from pydantic import BaseModel, Field
 
 from . import store
 
-app = FastAPI(title="NEXORA Business Operations", version="0.1.0")
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    """Initialize the SQLite store once for the application lifespan."""
+    store.init_db()
+    yield
+
+
+app = FastAPI(title="NEXORA Business Operations", version="0.1.0", lifespan=lifespan)
 
 
 class ProjectInput(BaseModel):
@@ -55,11 +64,6 @@ async def security_headers(request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Cache-Control"] = "no-store"
     return response
-
-
-@app.on_event("startup")
-def startup() -> None:
-    store.init_db()
 
 
 @app.get("/health")
