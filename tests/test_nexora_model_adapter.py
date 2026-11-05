@@ -23,6 +23,37 @@ class ModelAdapterConfigTests(unittest.TestCase):
                 ("https://api.example.test/v1", "test-key", "test-model"),
             )
 
+    def test_rejects_url_without_host(self):
+        values = {
+            "NEXORA_BASE_URL": "https://",
+            "NEXORA_API_KEY": "test-key",
+            "NEXORA_MODEL": "test-model",
+        }
+        with patch.dict(os.environ, values, clear=True):
+            with self.assertRaises(ModelConfigurationError):
+                _settings()
+
+    def test_rejects_embedded_credentials(self):
+        values = {
+            "NEXORA_BASE_URL": "https://user:secret@example.test/v1",
+            "NEXORA_API_KEY": "test-key",
+            "NEXORA_MODEL": "test-model",
+        }
+        with patch.dict(os.environ, values, clear=True):
+            with self.assertRaises(ModelConfigurationError):
+                _settings()
+
+    def test_rejects_query_and_fragment(self):
+        for base_url in ("https://example.test/v1?token=secret", "https://example.test/v1#fragment"):
+            values = {
+                "NEXORA_BASE_URL": base_url,
+                "NEXORA_API_KEY": "test-key",
+                "NEXORA_MODEL": "test-model",
+            }
+            with patch.dict(os.environ, values, clear=True):
+                with self.assertRaises(ModelConfigurationError):
+                    _settings()
+
     def test_rejects_invalid_base_url_scheme(self):
         values = {
             "NEXORA_BASE_URL": "file:///tmp",
