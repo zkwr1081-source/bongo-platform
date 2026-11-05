@@ -80,7 +80,7 @@ p{{line-height:1.8}}.muted,small{{color:var(--muted)}}.stats{{display:flex;gap:1
 .stat,.card{{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px}}
 .stat{{min-width:150px;flex:1}}.stat strong{{display:block;font-size:28px;color:var(--accent)}}
 .grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}}
-.card p{{margin:8px 0}}a{{color:var(--accent)}}.tag{{display:inline-block;border:1px solid var(--line);border-radius:99px;padding:5px 10px;color:var(--accent)}footer{{margin:34px 0;color:var(--muted);font-size:13px}}
+.card p{{margin:8px 0}}a{{color:var(--accent)}}.tag{{display:inline-block;border:1px solid var(--line);border-radius:99px;padding:5px 10px;color:var(--accent)}}footer{{margin:34px 0;color:var(--muted);font-size:13px}}
 </style><main><header><span class="tag">نسخة محلية أولية · MVP</span><h1>BONGO | مختبر اكتشاف الاحتياجات</h1>
 <p>حوّل الإشارات والمصادر إلى أدلة قابلة للمراجعة، ثم رتّب فرص الحلول. لا يوجد اتصال تلقائي بمصادر خارجية في هذه النسخة، ولا تُعد الدرجات إثباتاً للجدوى.</p></header>
 <section class="stats"><div class="stat"><strong>{len(evidence_rows)}</strong>دليل محفوظ محلياً</div><div class="stat"><strong>{len(ideas)}</strong>فرصة مسجلة</div><div class="stat"><strong>SQLite</strong>تخزين محلي</div></section>
