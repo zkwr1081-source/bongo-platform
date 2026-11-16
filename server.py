@@ -21,6 +21,7 @@ from nexora_model_adapter import ModelConfigurationError, model_handler
 
 HOST = os.getenv("NEXORA_HOST", "127.0.0.1")
 PORT = int(os.getenv("NEXORA_PORT", "8080"))
+EXECUTION_TIMEOUT_SECONDS = int(os.getenv("NEXORA_EXECUTION_TIMEOUT", "330"))
 ROOT = Path(__file__).resolve().parent
 INDEX = ROOT / "web" / "index.html"
 GITHUB_REPO = os.getenv("NEXORA_GITHUB_REPO", "zkwr1081-source/bongo-platform")
@@ -111,7 +112,7 @@ class NexoraHandler(BaseHTTPRequestHandler):
                 return
             results = asyncio.run(run_batch(
                 goal=goal.strip(), handler=model_handler, agent_ids=raw_ids,
-                concurrency=concurrency, timeout_seconds=75,
+                concurrency=concurrency, timeout_seconds=EXECUTION_TIMEOUT_SECONDS,
             ))
             self._json(200, {"ok": all(r["status"] == "ok" for r in results), "results": results})
         except ModelConfigurationError as exc:
@@ -193,6 +194,8 @@ class NexoraHandler(BaseHTTPRequestHandler):
 def main() -> None:
     if not 1 <= PORT <= 65535:
         raise ValueError("NEXORA_PORT must be between 1 and 65535")
+    if not 1 <= EXECUTION_TIMEOUT_SECONDS <= 630:
+        raise ValueError("NEXORA_EXECUTION_TIMEOUT must be between 1 and 630")
     server = ThreadingHTTPServer((HOST, PORT), NexoraHandler)
     print(f"NEXORA dashboard: http://127.0.0.1:{PORT}")
     print(f"NEXORA status:    http://127.0.0.1:{PORT}/api/status")
