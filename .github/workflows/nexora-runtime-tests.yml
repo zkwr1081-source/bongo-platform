@@ -1,0 +1,38 @@
+name: NEXORA Runtime Tests
+
+on:
+  pull_request:
+    paths:
+      - "nexora_agents.py"
+      - "nexora_model_adapter.py"
+      - "server.py"
+      - "tests/test_nexora*.py"
+      - ".github/workflows/nexora-runtime-tests.yml"
+  push:
+    branches:
+      - main
+      - "nexora/**"
+    paths:
+      - "nexora_agents.py"
+      - "nexora_model_adapter.py"
+      - "server.py"
+      - "tests/test_nexora*.py"
+      - ".github/workflows/nexora-runtime-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run NEXORA runtime tests
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest
+          python -m pytest -q tests/test_nexora_agents.py tests/test_nexora_model_adapter.py
