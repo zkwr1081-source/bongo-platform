@@ -1,12 +1,7 @@
-"""OpenAI-compatible model adapter for NEXORA's logical agent runtime.
+"""OpenAI-compatible adapter for local Qwen and remote model providers.
 
-Configuration (environment only; never commit credentials):
-  NEXORA_BASE_URL  e.g. https://api.openai.com/v1
-  NEXORA_API_KEY   provider API key
-  NEXORA_MODEL     provider model identifier
-
-The adapter uses only the Python standard library and sends one request per
-selected agent. Start with a small batch and respect provider rate limits.
+Local HTTP is allowed only for loopback hosts and does not require an API key.
+Remote providers must use HTTPS and an API key. Credentials are environment-only.
 """
 from __future__ import annotations
 
@@ -14,6 +9,7 @@ import asyncio
 import json
 import os
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Any
 
@@ -21,7 +17,7 @@ from nexora_agents import AgentSpec, run_batch
 
 
 class ModelConfigurationError(RuntimeError):
-    """Raised when model connection settings are incomplete."""
+    """Raised when model connection settings are incomplete or unsafe."""
 
 
 class ModelRequestError(RuntimeError):
@@ -33,50 +29,57 @@ def _settings() -> tuple[str, str, str]:
     api_key = os.getenv("NEXORA_API_KEY", "").strip()
     model = os.getenv("NEXORA_MODEL", "").strip()
     missing = [name for name, value in (
-        ("NEXORA_BASE_URL", base_url),
-        ("NEXORA_API_KEY", api_key),
-        ("NEXORA_MODEL", model),
+        ("NEXORA_BASE_URL", base_url), ("NEXORA_MODEL", model)
     ) if not value]
     if missing:
         raise ModelConfigurationError("Missing environment variables: " + ", ".join(missing))
-    if not base_url.startswith(("https://", "http://")):
-        raise ModelConfigurationError("NEXORA_BASE_URL must start with http:// or https://")
+
+    parsed = urllib.parse.urlsplit(base_url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise ModelConfigurationError("NEXORA_BASE_URL must be a valid HTTP(S) URL")
+    if parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise ModelConfigurationError("NEXORA_BASE_URL must not contain credentials, query, or fragment")
+
+    host = parsed.hostname.lower().rstrip(".")
+    is_loopback = host in ("localhost", "127.0.0.1", "::1")
+    if parsed.scheme == "http" and not is_loopback:
+        raise ModelConfigurationError("Remote model endpoints must use HTTPS")
+    if not is_loopback and not api_key:
+        raise ModelConfigurationError("NEXORA_API_KEY is required for remote HTTPS providers")
     return base_url, api_key, model
 
 
 def _request_completion(agent: AgentSpec, goal: str) -> str:
     base_url, api_key, model = _settings()
-    url = base_url + "/chat/completions"
     payload = {
         "model": model,
         "messages": [
-            {
-                "role": "system",
-                "content": (
-                    "You are a specialist worker in the NEXORA multi-agent system. "
-                    f"Your department is {agent.department}; specialty: {agent.specialty}. "
-                    "Work only on the assigned goal. Be concrete, state assumptions, "
-                    "and do not claim actions you did not perform."
-                ),
-            },
+            {"role": "system", "content": (
+                "أنت وكيل متخصص ضمن NEXORA. "
+                f"القسم: {agent.department}. الاختصاص: {agent.specialty}. "
+                "نفّذ المطلوب ضمن النطاق، وميّز الأدلة عن الاستنتاجات، "
+                "ولا تدّع تنفيذ إجراء لم يحدث."
+            )},
             {"role": "user", "content": goal},
         ],
         "temperature": 0.2,
     }
+    headers = {"Content-Type": "application/json", "Accept": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
     request = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
+        base_url + "/chat/completions",
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers=headers,
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=60) as response:
+        timeout = float(os.getenv("NEXORA_MODEL_TIMEOUT", "300"))
+        if not 1 <= timeout <= 600:
+            raise ModelConfigurationError("NEXORA_MODEL_TIMEOUT must be between 1 and 600")
+        with urllib.request.urlopen(request, timeout=timeout) as response:
             body = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
-        # Do not include request headers or credentials in error messages.
         detail = exc.read(1000).decode("utf-8", errors="replace")
         raise ModelRequestError(f"Provider HTTP {exc.code}: {detail}") from None
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
@@ -85,25 +88,23 @@ def _request_completion(agent: AgentSpec, goal: str) -> str:
     try:
         result = body["choices"][0]["message"]["content"]
     except (KeyError, IndexError, TypeError):
-        raise ModelRequestError("Provider response did not contain choices[0].message.content") from None
+        raise ModelRequestError("Provider response missing choices[0].message.content") from None
     if not isinstance(result, str) or not result.strip():
         raise ModelRequestError("Provider returned an empty assistant message")
     return result.strip()
 
 
 async def model_handler(agent: AgentSpec, goal: str) -> str:
-    """Async handler compatible with nexora_agents.run_batch."""
     return await asyncio.to_thread(_request_completion, agent, goal)
 
 
 async def main() -> None:
-    # Safe smoke-test default: only 2 agents, concurrency 2.
     results = await run_batch(
-        goal="اقترح فحصاً عملياً قصيراً لجاهزية منصة NEXORA للنشر.",
+        goal="افحص جاهزية NEXORA واقترح خطوة تحقق عملية واحدة.",
         handler=model_handler,
         agent_ids=("NX-ORCHESTRATION-001", "NX-QUALITY-001"),
         concurrency=2,
-        timeout_seconds=75,
+        timeout_seconds=330,
     )
     print(json.dumps(results, ensure_ascii=False, indent=2))
 
