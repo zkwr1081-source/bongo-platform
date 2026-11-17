@@ -88,9 +88,9 @@ python -m unittest discover -s tests -p 'test_nexora*.py'
 
 ## 📬 التواصل
 
+- **واتساب مباشر:** [0964982098](https://wa.me/963964982098)
 - **ملف GitHub الشخصي:** https://github.com/zkwr1081-source
 - **التواصل بخصوص المشروع والطلبات:** https://github.com/zkwr1081-source/bongo-platform/issues
 - **مناقشات المجتمع:** https://github.com/zkwr1081-source/bongo-platform/discussions
 - **البريد الإلكتروني:** [zkwr1081@gmail.com](mailto:zkwr1081@gmail.com)
 
-> روابط WhatsApp وTelegram وFacebook وInstagram لم تُضف لعدم توفر عناوين حسابات موثّقة لها.
