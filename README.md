@@ -86,4 +86,10 @@ python -m unittest discover -s tests -p 'test_nexora*.py'
 
 المشروع متاح لمناقشة الاستحواذ أو الترخيص. يمكن للمشتري طلب مراجعة فنية للنطاق الحالي والملفات والاختبارات قبل تقديم عرض. لا يُدّعى وجود إيرادات أو جاهزية إنتاجية غير مثبتة.
 
-للتواصل المباشر عبر WhatsApp: **https://github.com/zkwr1081-source**
+## 📬 التواصل
+
+- **ملف GitHub الشخصي:** https://github.com/zkwr1081-source
+- **التواصل بخصوص المشروع والطلبات:** https://github.com/zkwr1081-source/bongo-platform/issues
+- **مناقشات المجتمع:** https://github.com/zkwr1081-source/bongo-platform/discussions
+
+> روابط WhatsApp وTelegram وFacebook وInstagram والبريد الإلكتروني غير منشورة في بيانات المستودع التي تم التحقق منها؛ لذلك لم أضع روابط غير مؤكدة أو أنسب حسابات غير مثبتة.
