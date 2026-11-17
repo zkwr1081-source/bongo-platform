@@ -91,5 +91,6 @@ python -m unittest discover -s tests -p 'test_nexora*.py'
 - **ملف GitHub الشخصي:** https://github.com/zkwr1081-source
 - **التواصل بخصوص المشروع والطلبات:** https://github.com/zkwr1081-source/bongo-platform/issues
 - **مناقشات المجتمع:** https://github.com/zkwr1081-source/bongo-platform/discussions
+- **البريد الإلكتروني:** [zkwr1081@gmail.com](mailto:zkwr1081@gmail.com)
 
 > روابط WhatsApp وTelegram وFacebook وInstagram والبريد الإلكتروني غير منشورة في بيانات المستودع التي تم التحقق منها؛ لذلك لم أضع روابط غير مؤكدة أو أنسب حسابات غير مثبتة.
